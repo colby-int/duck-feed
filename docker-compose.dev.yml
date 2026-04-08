@@ -1,0 +1,37 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: dev
+    command: ["npx", "tsx", "watch", "src/index.ts"]
+    volumes:
+      - ./server/src:/app/src:ro
+    environment:
+      LOG_LEVEL: debug
+
+  ingest-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: dev
+    command: ["npx", "tsx", "watch", "src/worker.ts"]
+    volumes:
+      - ./server/src:/app/src:ro
+    environment:
+      LOG_LEVEL: debug
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: dev
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client/src:/app/src:ro
+      - ./client/index.html:/app/index.html:ro
+    environment:
+      VITE_API_URL: http://localhost:3000
+      VITE_STREAM_URL: http://localhost:8000/stream

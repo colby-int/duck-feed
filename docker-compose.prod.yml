@@ -1,0 +1,20 @@
+services:
+  postgres:
+    ports: !reset []
+
+  server:
+    environment:
+      NODE_ENV: production
+    ports: !reset []
+
+  ingest-worker:
+    environment:
+      NODE_ENV: production
+
+  icecast:
+    ports: !reset []
+
+  nginx:
+    depends_on:
+      - server
+      - icecast

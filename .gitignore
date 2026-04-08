@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+client/.env.production
+client/.env.production.local
+
+# Docker volumes (local data)
+volumes/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Test coverage
+coverage/
+
+
+# Media
+*.webm
+*.mp3
+episodes/
+.playwright-mcp/
+/NEW.png
+/logo.png
+/web.png
+
+# Private
+.private/
+
+# Local-only repo state
+/AGENTS.md
+/CLAUDE.md
+.claude/
+/DESIGN.md
+/DEV.md
+/PLAN.md
+/PUBLIC_REPO_CLEANUP.md
+/UX.md
+/docs/plans/
+/ingest
+/ingest.md
+/mixcloud
+/package-lock.json
+/scripts/tests/ingest.test.mjs
+/scripts/tests/mixcloud.test.mjs

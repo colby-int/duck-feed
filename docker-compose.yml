@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: ${PORT:-3000}
+      LIQUIDSOAP_TELNET_HOST: ${LIQUIDSOAP_TELNET_HOST:-liquidsoap}
+      LIQUIDSOAP_TELNET_PORT: ${LIQUIDSOAP_TELNET_PORT:-1234}
+      ACOUSTID_API_KEY: ${ACOUSTID_API_KEY:-}
+      MUSICBRAINZ_CONTACT_URL: ${MUSICBRAINZ_CONTACT_URL:-https://github.com/your-username/duck-feed}
+    volumes:
+      - ./volumes/dropzone:/var/lib/duckfeed/dropzone
+      # Read-only access to /library so the manual fingerprint re-trigger
+      # route in the API can run fpcalc against existing library files.
+      # The server NEVER writes here — only the ingest worker does.
+      - ./volumes/library:/var/lib/duckfeed/library:ro
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  ingest-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ACOUSTID_API_KEY: ${ACOUSTID_API_KEY:-}
+      MUSICBRAINZ_CONTACT_URL: ${MUSICBRAINZ_CONTACT_URL:-https://github.com/your-username/duck-feed}
+    volumes:
+      - ./volumes/dropzone:/var/lib/duckfeed/dropzone
+      - ./volumes/processing:/var/lib/duckfeed/processing
+      - ./volumes/library:/var/lib/duckfeed/library
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  liquidsoap:
+    build:
+      context: ./liquidsoap
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      ICECAST_HOSTNAME: ${ICECAST_HOSTNAME:-localhost}
+    volumes:
+      - ./volumes/library:/var/lib/duckfeed/library:ro
+    depends_on:
+      icecast:
+        condition: service_started
+
+  icecast:
+    build:
+      context: ./icecast
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      ICECAST_ADMIN_PASSWORD: ${ICECAST_ADMIN_PASSWORD}
+      ICECAST_HOSTNAME: ${ICECAST_HOSTNAME:-localhost}
+    ports:
+      - "8000:8000"
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - client
+      - server
+      - icecast
+
+volumes:
+  postgres-data:
