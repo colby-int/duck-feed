@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { AudioMotionState } from '../hooks/use-audio-motion';
 import { getHeroTitleFont, layoutHeroTitle } from '../lib/hero-title-layout';
 
-const HERO_TITLE_MIN_FONT_SIZE = 16;
-const HERO_TITLE_FONT_SIZES = [44, 40, 36, 32, 28, 26, 24, 22, 20, 18, 16];
+const HERO_TITLE_MIN_FONT_SIZE = 13;
+const HERO_TITLE_FONT_SIZES = [44, 40, 36, 32, 28, 26, 24, 22, 20, 18, 16, 14, 13];
 const HERO_TITLE_LINE_HEIGHT_RATIO = 74 / 68;
 
 function getHeroTitleLineHeight(fontSize: number): number {

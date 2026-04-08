@@ -191,7 +191,7 @@ describe('HeroTitle', () => {
     });
     expect(screen.getByTestId('hero-title-line')).toHaveTextContent('A Very Long Duckfeed Broadcast Title');
     expect(screen.getByTestId('hero-title')).toHaveStyle({
-      fontSize: '16px',
+      fontSize: '13px',
     });
   });
 });

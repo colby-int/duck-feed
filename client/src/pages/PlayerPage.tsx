@@ -186,7 +186,7 @@ export function PlayerPage() {
           <img alt="duckfeed" className="w-[200px] sm:w-[280px]" src="/logo.png" />
 
           <div className="mt-6 w-full max-w-[760px] sm:mt-10">
-            <div className="bg-cobalt p-2.5 sm:p-3.5">
+            <div className="bg-cobalt p-2.5 shadow-[0_18px_36px_-22px_rgba(20,20,19,0.55)] sm:p-3.5">
               <div className="relative bg-ink px-4 py-5 text-white sm:px-7 sm:py-7">
                 <div className="absolute right-4 top-4 flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.26em] sm:right-6 sm:top-5 sm:text-[0.76rem] sm:tracking-[0.28em]">
                   <span
@@ -264,7 +264,7 @@ export function PlayerPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid w-full max-w-[680px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-cobalt px-3 py-2.5 text-white sm:mt-4 sm:gap-3 sm:px-4 sm:py-3">
+          <div className="mt-3 grid w-full max-w-[680px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-cobalt px-3 py-2.5 text-white shadow-[0_14px_28px_-18px_rgba(20,20,19,0.5)] sm:mt-4 sm:gap-3 sm:px-4 sm:py-3">
             <div className="text-[0.62rem] uppercase tracking-[0.22em] text-white/70 sm:text-[0.7rem] sm:tracking-[0.26em]">
               stream url
             </div>
@@ -287,11 +287,23 @@ export function PlayerPage() {
               )}
             </button>
           </div>
+
+          <a
+            className="group mt-3 inline-flex items-center gap-[1.05rem] bg-butter py-[0.6rem] pl-[0.6rem] pr-[1.2rem] text-ink shadow-[0_0_0_1px_rgba(20,20,19,0.12),0_10px_22px_-14px_rgba(20,20,19,0.45)] transition hover:brightness-[0.96] sm:mt-4"
+            href="https://www.duckradio.live/"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <img alt="" className="h-[1.8rem] w-[1.8rem] transition-transform duration-200 group-hover:-translate-y-px" src="/duckradio.png" />
+            <span className="text-[0.94rem] font-semibold tracking-[-0.02em] sm:text-[1.02rem]">
+              go to duck radio
+            </span>
+          </a>
         </section>
 
         {episodes.length > 0 ? (
           <section className="mx-auto w-full max-w-[760px] pb-10">
-            <details className="bg-cobalt p-2.5" data-testid="up-next-accordion" open>
+            <details className="bg-cobalt p-2.5 shadow-[0_18px_36px_-22px_rgba(20,20,19,0.5)]" data-testid="up-next-accordion" open>
               <summary className="list-none cursor-pointer bg-card px-4 py-3 text-ink sm:px-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
