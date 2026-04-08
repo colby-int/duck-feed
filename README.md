@@ -73,6 +73,7 @@ Optional:
 - `make build` and `make deploy` automatically include `docker-compose.prod.local.yml` when that file exists.
 - For split-origin deployments such as `app`, `api`, and `stream` on separate hosts or subdomains:
   copy `docker-compose.prod.local.example.yml` to `docker-compose.prod.local.yml`, then add the host TLS server blocks under `nginx/conf.d-extra/*.conf`. Both locations stay out of git.
+- In split-origin production, set `ICECAST_HOSTNAME` in `.env` to the public stream host and create `client/.env.production` from the example so the SPA uses the public API and stream origins instead of same-origin defaults.
 - If the client needs different origins for the API or stream, copy `client/.env.production.example` to `client/.env.production` before building the client image.
 
 ## Stream metadata integration API
