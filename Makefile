@@ -4,7 +4,9 @@
        build deploy test test-watch lint lint-fix typecheck \
        backup restore seed-admin ingest seed-test-audio
 
-PROD_COMPOSE_FILES := -f docker-compose.yml -f docker-compose.prod.yml
+PROD_LOCAL_COMPOSE_FILE := docker-compose.prod.local.yml
+PROD_LOCAL_COMPOSE := $(if $(wildcard $(PROD_LOCAL_COMPOSE_FILE)),-f $(PROD_LOCAL_COMPOSE_FILE),)
+PROD_COMPOSE_FILES := -f docker-compose.yml -f docker-compose.prod.yml $(PROD_LOCAL_COMPOSE)
 
 # === Development ===
 

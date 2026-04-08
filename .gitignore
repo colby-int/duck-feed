@@ -9,6 +9,7 @@ dist/
 .env
 .env.local
 .env.*.local
+/docker-compose.prod.local.yml
 client/.env.production
 client/.env.production.local
 
@@ -57,6 +58,8 @@ episodes/
 /ingest
 /ingest.md
 /mixcloud
+/nginx/conf.d-extra/*
+!/nginx/conf.d-extra/.gitkeep
 /package-lock.json
 /scripts/tests/ingest.test.mjs
 /scripts/tests/mixcloud.test.mjs

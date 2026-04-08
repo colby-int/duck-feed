@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="client/public/favicon-96x96.png" width="72" alt="duckfeed logo" />
+</p>
+
 # duckfeed
 
 Self-hosted 24/7 internet radio from an archive of broadcast files.
@@ -83,7 +87,10 @@ Optional:
 ## Production notes
 
 - `docker-compose.prod.yml` keeps PostgreSQL, the API, and Icecast off public host ports while leaving Nginx on port 80.
-- The checked-in Nginx config is intentionally generic and HTTP-only. Put TLS and host-specific routing in front of it, or replace `nginx/conf.d/default.conf` in your deployment environment.
+- The checked-in Nginx config is intentionally generic and HTTP-only. Keep host-specific TLS and routing in local-only overrides instead of replacing `nginx/conf.d/default.conf`.
+- `make build` and `make deploy` automatically include `docker-compose.prod.local.yml` when that file exists.
+- For split-origin deployments such as `app`, `api`, and `stream` on separate hosts or subdomains:
+  copy `docker-compose.prod.local.example.yml` to `docker-compose.prod.local.yml`, then add the host TLS server blocks under `nginx/conf.d-extra/*.conf`. Both locations stay out of git.
 - If the client needs different origins for the API or stream, copy `client/.env.production.example` to `client/.env.production` before building the client image.
 
 ## Stream metadata integration API
@@ -120,6 +127,13 @@ Build and deploy with:
 ```bash
 make build
 make deploy
+```
+
+If production uses local-only TLS overrides, create them before the first deploy:
+
+```bash
+cp docker-compose.prod.local.example.yml docker-compose.prod.local.yml
+mkdir -p nginx/conf.d-extra
 ```
 
 ## Common commands
