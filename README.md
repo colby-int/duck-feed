@@ -1,42 +1,24 @@
-<p align="center">
-  <img src="client/public/favicon-96x96.png" width="72" alt="duckfeed logo" />
+<p align="left">
+  <img src="client/public/favicon-96x96.png" width="100" alt="duckfeed logo" />
 </p>
 
-# duckfeed
+# duckfeed 
 
-Self-hosted 24/7 internet radio from an archive of broadcast files.
 
-duckfeed ingests long-form audio into a library on disk, normalises and tags it, and keeps a continuous MP3 stream online through Liquidsoap and Icecast. The stream path is intentionally isolated from the admin UI, API, and database, so already-ingested audio keeps playing even if the rest of the stack is offline.
+#### an infra stack / mgmt suite / user interface for self-hosting an internet radio stream from a store of audio files. designed to listen to the <a href='https://www.duckradio.live/'> duck! radio </a> archives 24/7. built to be deployable, modular & lightweight. 
 
-## Why this exists
+### listen to the demo stream <a href='https://duckfeed.cmr.my'> here.</a>  
 
-- Keep the stream independent from the web app and database at runtime.
-- Preserve source uploads by copying files before any processing.
-- Offer a lightweight admin surface for uploads, metadata, tracklists, and stream controls.
-- Stay self-hosted: Node.js, React, PostgreSQL, Icecast, Liquidsoap, Docker Compose.
+## 
 
-## Stack
+- **Backend**: Node.js, TypeScript, Fastify, Drizzle ORM
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS
+- **Database**: PostgreSQL 16
+- **Streaming**: Liquidsoap + Icecast2
+- **Audio tooling**: ffmpeg, fpcalc, AcoustID, MusicBrainz
+- **Infra**: Docker Compose, Nginx
 
-- Backend: Node.js, TypeScript, Fastify, Drizzle ORM
-- Frontend: React, TypeScript, Vite, Tailwind CSS
-- Database: PostgreSQL 16
-- Streaming: Liquidsoap + Icecast2
-- Audio tooling: ffmpeg, fpcalc, AcoustID, MusicBrainz
-- Infra: Docker Compose, Nginx
 
-## Architecture
-
-```
-dropzone -> ingest worker -> processing copy -> library -> liquidsoap -> icecast
-                                  |
-                                  -> postgres + fastify API -> React admin/player
-```
-
-Key runtime boundaries:
-
-- Liquidsoap and Icecast read `/library` directly and do not depend on the API or database.
-- The worker copies source audio before normalising, tagging, and shelving it.
-- The React client is a static build served by Nginx; if it fails, the stream still runs.
 
 ## Quick start
 
