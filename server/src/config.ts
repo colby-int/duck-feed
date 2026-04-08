@@ -6,6 +6,7 @@ interface Config {
   SESSION_SECRET: string;
   LOG_LEVEL: string;
   PORT: number;
+  INGEST_MAX_CONCURRENCY: number;
   LIQUIDSOAP_TELNET_HOST: string;
   LIQUIDSOAP_TELNET_PORT: number;
   ACOUSTID_API_KEY: string | null;
@@ -37,11 +38,20 @@ function intEnv(name: string, fallback: number): number {
   return parsed;
 }
 
+function positiveIntEnv(name: string, fallback: number): number {
+  const parsed = intEnv(name, fallback);
+  if (parsed < 1) {
+    throw new Error(`Invalid positive integer for env var ${name}: ${parsed}`);
+  }
+  return parsed;
+}
+
 export const config: Config = {
   DATABASE_URL: required('DATABASE_URL'),
   SESSION_SECRET: required('SESSION_SECRET'),
   LOG_LEVEL: optional('LOG_LEVEL', 'info'),
   PORT: intEnv('PORT', 3000),
+  INGEST_MAX_CONCURRENCY: positiveIntEnv('INGEST_MAX_CONCURRENCY', 1),
   LIQUIDSOAP_TELNET_HOST: optional('LIQUIDSOAP_TELNET_HOST', 'liquidsoap'),
   LIQUIDSOAP_TELNET_PORT: intEnv('LIQUIDSOAP_TELNET_PORT', 1234),
   ACOUSTID_API_KEY: process.env.ACOUSTID_API_KEY ?? null,

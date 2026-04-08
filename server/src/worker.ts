@@ -5,6 +5,7 @@
 import chokidar from 'chokidar';
 import { config } from './config.js';
 import { logger } from './lib/logger.js';
+import { createTaskQueue } from './lib/task-queue.js';
 import { ingestFile, isSupportedAudioFile, shouldSkipSource } from './services/ingest.js';
 import { pool } from './db/index.js';
 
@@ -46,8 +47,15 @@ async function handleFile(filePath: string): Promise<void> {
 }
 
 async function start(): Promise<void> {
+  const ingestQueue = createTaskQueue(config.INGEST_MAX_CONCURRENCY);
+
   logger.info(
-    { dropzone: config.DROPZONE_DIR, library: config.LIBRARY_DIR, processing: config.PROCESSING_DIR },
+    {
+      dropzone: config.DROPZONE_DIR,
+      library: config.LIBRARY_DIR,
+      processing: config.PROCESSING_DIR,
+      maxConcurrency: config.INGEST_MAX_CONCURRENCY,
+    },
     'ingest worker starting',
   );
 
@@ -62,7 +70,18 @@ async function start(): Promise<void> {
   });
 
   watcher.on('add', (filePath) => {
-    void handleFile(filePath);
+    const queuedTask = ingestQueue.enqueue(() => handleFile(filePath));
+    logger.info(
+      {
+        filePath,
+        activeIngests: ingestQueue.activeCount,
+        queuedIngests: ingestQueue.pendingCount,
+      },
+      'worker: ingest queued',
+    );
+    void queuedTask.catch((err) => {
+      logger.error({ err, filePath }, 'worker: queued ingest task crashed');
+    });
   });
 
   watcher.on('error', (err) => {
