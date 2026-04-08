@@ -14,7 +14,7 @@
     "lint": "eslint src/ tests/ scripts/",
     "lint:fix": "eslint src/ tests/ scripts/ --fix",
     "typecheck": "tsc --noEmit",
-    "stream-api-keys": "tsx src/cli/manage-stream-api-keys.ts",
+    "stream-api-keys": "node dist/cli/manage-stream-api-keys.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:studio": "drizzle-kit studio",
