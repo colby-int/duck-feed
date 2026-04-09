@@ -40,6 +40,7 @@ export function PlayerPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
   const { activate: activateAudioMotion, motion } = useAudioMotion(audioElement, isLoading || isPlaying);
 
   useEffect(() => {
@@ -158,9 +159,12 @@ export function PlayerPage() {
   const heroPresenter = currentEpisode?.presenter ?? fallbackEpisode?.presenter ?? null;
   const heroArtworkUrl =
     currentEpisode != null ? currentEpisode.artworkUrl ?? null : fallbackEpisode?.artworkUrl ?? null;
-  const heroMixcloudUrl = currentEpisode?.mixcloudUrl ?? fallbackEpisode?.mixcloudUrl ?? null;
+  const heroMixcloudUrl =
+    currentEpisode != null ? currentEpisode.mixcloudUrl ?? null : fallbackEpisode?.mixcloudUrl ?? null;
   const heroDate = formatBroadcastDate(currentEpisode?.broadcastDate ?? fallbackEpisode?.broadcastDate) ?? 'Live archive stream';
   const upcomingEpisodes = episodes.filter((episode) => episode.id !== currentEpisode?.id).slice(0, 6);
+  const nextUpcomingEpisode = upcomingEpisodes[0] ?? null;
+  const nextUpcomingDate = formatBroadcastDate(nextUpcomingEpisode?.broadcastDate);
   const isStreamLive = streamStatus?.online === true;
   const liveBadgeLabel = streamStatus == null ? 'checking' : isStreamLive ? 'live' : 'offline';
   const displayStreamUrl =
@@ -264,6 +268,97 @@ export function PlayerPage() {
             </div>
           </div>
 
+          {episodes.length > 0 ? (
+            <div className="mt-3 w-full max-w-[760px] sm:mt-4">
+              <details
+                className="bg-cobalt p-2.5 shadow-[0_18px_36px_-22px_rgba(20,20,19,0.5)]"
+                data-testid="up-next-accordion"
+                open={isQueueOpen}
+                onToggle={(event) => setIsQueueOpen((event.currentTarget as HTMLDetailsElement).open)}
+              >
+                <summary className="list-none cursor-pointer bg-ink px-4 py-3 text-white sm:px-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/70 sm:text-[0.72rem] sm:tracking-[0.28em]">
+                        next up
+                      </div>
+                      {nextUpcomingEpisode ? (
+                        <>
+                          <div className="mt-1.5 overflow-hidden whitespace-nowrap text-sm font-medium text-white sm:text-base">
+                            {formatEpisodeDisplayTitle(nextUpcomingEpisode)}
+                          </div>
+                          {nextUpcomingDate ? (
+                            <div className="mt-0.5 text-[0.7rem] text-white/55 sm:text-xs">
+                              {nextUpcomingDate}
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <div className="mt-1 text-sm text-white/55">Nothing queued in rotation</div>
+                      )}
+                    </div>
+                    <span
+                      aria-hidden="true"
+                      className={[
+                        'flex h-7 w-7 shrink-0 items-center justify-center text-white/70 transition-transform duration-200',
+                        isQueueOpen ? 'rotate-180' : '',
+                      ].join(' ')}
+                    >
+                      <svg
+                        fill="none"
+                        height="18"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        width="18"
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </span>
+                  </div>
+                </summary>
+
+                <div className="bg-ink px-2 pb-2 sm:px-3 sm:pb-3">
+                  {upcomingEpisodes.length === 0 ? (
+                    <div className="px-2 py-3 text-sm text-white/60">No additional episodes are queued in rotation right now.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {upcomingEpisodes.map((episode) => (
+                        <article
+                          key={episode.id}
+                          className="grid items-center gap-3 bg-white/[0.04] px-3 py-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-4"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-[0.82rem] text-white/55 sm:text-sm">
+                              {formatBroadcastDate(episode.broadcastDate) ?? episode.slug}
+                            </div>
+                            <div className="mt-1 text-sm font-medium leading-tight text-white sm:text-base">
+                              {formatEpisodeDisplayTitle(episode)}
+                            </div>
+                          </div>
+                          {episode.mixcloudUrl ? (
+                            <a
+                              className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/80 transition hover:text-[#00ff3a]"
+                              href={episode.mixcloudUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              mixcloud
+                            </a>
+                          ) : (
+                            <div className="text-[0.68rem] uppercase tracking-[0.18em] text-white/30">local only</div>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </details>
+            </div>
+          ) : null}
+
           <div className="mt-3 grid w-full max-w-[680px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-cobalt px-3 py-2.5 text-white shadow-[0_14px_28px_-18px_rgba(20,20,19,0.5)] sm:mt-4 sm:gap-3 sm:px-4 sm:py-3">
             <div className="text-[0.62rem] uppercase tracking-[0.22em] text-white/70 sm:text-[0.7rem] sm:tracking-[0.26em]">
               stream url
@@ -300,62 +395,6 @@ export function PlayerPage() {
             </span>
           </a>
         </section>
-
-        {episodes.length > 0 ? (
-          <section className="mx-auto w-full max-w-[760px] pb-10">
-            <details className="bg-cobalt p-2.5 shadow-[0_18px_36px_-22px_rgba(20,20,19,0.5)]" data-testid="up-next-accordion" open>
-              <summary className="list-none cursor-pointer bg-card px-4 py-3 text-ink sm:px-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[0.68rem] uppercase tracking-[0.26em] text-ink/65 sm:text-[0.72rem] sm:tracking-[0.28em]">
-                      next up
-                    </div>
-                    <div className="mt-1 text-sm text-ink/55">
-                      {upcomingEpisodes.length} episode{upcomingEpisodes.length === 1 ? '' : 's'} in rotation
-                    </div>
-                  </div>
-                  <div className="text-[0.68rem] uppercase tracking-[0.22em] text-ink/45">open</div>
-                </div>
-              </summary>
-
-              <div className="bg-card px-2 pb-2 sm:px-3 sm:pb-3">
-                {upcomingEpisodes.length === 0 ? (
-                  <div className="px-2 py-3 text-sm text-ink/60">No additional episodes are queued in rotation right now.</div>
-                ) : (
-                  <div className="space-y-1">
-                    {upcomingEpisodes.map((episode) => (
-                      <article
-                        key={episode.id}
-                        className="grid items-center gap-3 bg-white px-3 py-2 shadow-[0_0_0_1px_rgba(20,20,19,0.08)] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-4"
-                      >
-                        <div className="min-w-0">
-                          <div className="text-[0.82rem] text-ink/58 sm:text-sm">
-                            {formatBroadcastDate(episode.broadcastDate) ?? episode.slug}
-                          </div>
-                          <div className="mt-1 text-sm font-medium leading-tight sm:text-base">
-                            {formatEpisodeDisplayTitle(episode)}
-                          </div>
-                        </div>
-                        {episode.mixcloudUrl ? (
-                          <a
-                            className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-ink transition hover:text-cobalt"
-                            href={episode.mixcloudUrl}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            mixcloud
-                          </a>
-                        ) : (
-                          <div className="text-[0.68rem] uppercase tracking-[0.18em] text-ink/35">local only</div>
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </details>
-          </section>
-        ) : null}
       </main>
     </div>
   );

@@ -111,7 +111,7 @@ describe('PlayerPage', () => {
     });
   });
 
-  it('renders artwork, a Mixcloud CTA, formatted dates, and an open next-up accordion', async () => {
+  it('renders artwork, a Mixcloud CTA, formatted dates, and a collapsed next-up accordion showing next episode metadata', async () => {
     render(<PlayerPage />);
 
     const artwork = await screen.findByRole('img', { name: /artwork for test pattern/i });
@@ -123,8 +123,15 @@ describe('PlayerPage', () => {
     );
     expect(screen.getByTestId('hero-date')).toHaveTextContent('September 8, 2025');
     expect(screen.getByTestId('hero-presenter-line')).toHaveTextContent('with Wellness Centre');
-    expect(screen.getByText('October 1, 2025')).toBeInTheDocument();
-    expect(screen.getByTestId('up-next-accordion')).toHaveAttribute('open');
+
+    // Accordion is collapsed by default; summary surfaces the next episode's title + date.
+    const accordion = screen.getByTestId('up-next-accordion');
+    expect(accordion).not.toHaveAttribute('open');
+    const summary = accordion.querySelector('summary');
+    expect(summary).not.toBeNull();
+    expect(summary).toHaveTextContent('Night Drive');
+    expect(summary).toHaveTextContent('October 1, 2025');
+
     expect(screen.queryByText(/archive/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/now playing/i)).not.toBeInTheDocument();
   });
@@ -210,5 +217,50 @@ describe('PlayerPage', () => {
     });
 
     expect(screen.queryByRole('img', { name: /artwork for current set/i })).not.toBeInTheDocument();
+  });
+
+  it('does not show a stale Mixcloud CTA when the current episode has no Mixcloud URL', async () => {
+    requestDataMock.mockImplementation(async (path) => {
+      if (path === '/api/episodes?limit=12') {
+        return structuredClone(archiveFixture);
+      }
+
+      if (path === '/api/stream/status') {
+        return {
+          checkedAt: '2026-04-08T00:00:00.000Z',
+          librarySize: 2,
+          online: true,
+          queueLength: 1,
+          streamUrl: '/stream',
+        };
+      }
+
+      if (path === '/api/stream/now-playing') {
+        return {
+          elapsedSeconds: 120,
+          episode: {
+            artworkUrl: null,
+            broadcastDate: '2025-11-01',
+            id: 'episode-live',
+            mixcloudUrl: null,
+            presenter: 'DJ Current',
+            slug: 'live-set',
+            title: 'Current Set',
+          },
+          startedAt: '2026-04-08T00:00:00.000Z',
+          track: null,
+        } satisfies api.NowPlaying;
+      }
+
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    render(<PlayerPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hero-presenter-line')).toHaveTextContent('with DJ Current');
+    });
+
+    expect(screen.queryByRole('link', { name: /listen on mixcloud/i })).not.toBeInTheDocument();
   });
 });
