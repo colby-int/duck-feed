@@ -3,7 +3,6 @@
 </p>
 
 
-<center>
 
 # duckfeed 
 
@@ -13,11 +12,10 @@
 #### designed for listening to the <a href='https://www.duckradio.live/'> duck! radio </a> archives.
 
 ###
-<p align="center">
+<p align="left">
 <img src="docs/screenshots/streampage.png" width="450">
 
-### <center> see a frontend via the demo stream <a href='https://duckfeed.cmr.my'> here.</a>  </center>
-</center>
+###  see a frontend via the demo stream <a href='https://duckfeed.cmr.my'> here.</a>  
 
 ## 
 
