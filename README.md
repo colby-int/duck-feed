@@ -1,21 +1,42 @@
-<p align="left">
+<p align="center">
   <img src="client/public/favicon-96x96.png" width="100" alt="duckfeed logo" />
 </p>
+
+
+<center>
 
 # duckfeed 
 
 
-#### a modular & simple stack for streaming audio. initially created to listen to the = <a href='https://www.duckradio.live/'> duck! radio </a> archives outside of their broadcast day. 
+### a modular & simple stack for streaming audio. 
 
-### see a frontend via the demo stream <a href='https://duckfeed.cmr.my'> here.</a>  
+#### designed for listening to the <a href='https://www.duckradio.live/'> duck! radio </a> archives.
 
-## Overview
+###
+<p align="center">
+<img src="docs/screenshots/streampage.png" width="450">
+
+### <center> see a frontend via the demo stream <a href='https://duckfeed.cmr.my'> here.</a>  </center>
+</center>
+
+## 
 
 - **Modular by design**: run the full stack together, or split the frontend, API, and streaming services as needed. Liquidsoap + Icecast keep serving audio even if the SPA or admin/API layer is unavailable.
+
+
 - **Frontend player**: public stream page with live now-playing data, play/pause controls, waveform visualiser, next-up queue, stream URL copy, Mixcloud links, and runtime branding support.
+
+
 - **Admin management**: session-authenticated admin UI for dashboard monitoring, appearance/branding changes, episode editing, ingest uploads and job history, track review, stream queue controls, and integration key management.
+
+
 - **Ingest + processing**: upload via admin or drop files into the watched dropzone, then copy, normalise, fingerprint, enrich, and prepare audio for the `/library` without mutating source files.
+
+
 - **Security + auth**: protected `/api/admin/*` routes, hashed-password login, signed sessions, revocable read-only integration API keys, and a self-hosted stack with no required external SaaS.
+
+
+##
 
 ## Stack
 

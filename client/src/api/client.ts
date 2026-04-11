@@ -183,6 +183,26 @@ async function parseEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
   return (await response.json()) as ApiEnvelope<T>;
 }
 
+function parseEnvelopeText<T>(responseText: string): ApiEnvelope<T> | null {
+  if (!responseText.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(responseText) as ApiEnvelope<T>;
+  } catch {
+    return null;
+  }
+}
+
+function createAbortError(): Error {
+  if (typeof DOMException === 'function') {
+    return new DOMException('The operation was aborted.', 'AbortError');
+  }
+
+  return Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' });
+}
+
 function normalizeSiteAppearance(appearance: SiteAppearance): SiteAppearance {
   return {
     ...appearance,
@@ -282,6 +302,72 @@ export async function uploadEpisode(file: File): Promise<{ filename: string; pat
       'x-filename': file.name,
     },
     body: file,
+  });
+}
+
+export function uploadEpisodeWithProgress(
+  file: File,
+  onProgress: (fraction: number) => void,
+  signal?: AbortSignal,
+): Promise<{ filename: string; path: string }> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError());
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+
+    const handleAbort = () => {
+      xhr.abort();
+    };
+
+    const cleanup = () => {
+      signal?.removeEventListener('abort', handleAbort);
+    };
+
+    xhr.open('POST', buildUrl('/api/admin/ingest/upload'));
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('x-filename', file.name);
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || event.total <= 0) {
+        return;
+      }
+
+      onProgress(event.loaded / event.total);
+    };
+
+    xhr.onload = () => {
+      cleanup();
+
+      const envelope = parseEnvelopeText<{ filename: string; path: string }>(xhr.responseText);
+      const errorMessage =
+        envelope?.error?.message ??
+        `Upload failed with status ${xhr.status || 'unknown'}`;
+
+      if (xhr.status < 200 || xhr.status >= 300 || envelope?.error || !envelope?.data) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      onProgress(1);
+      resolve(envelope.data);
+    };
+
+    xhr.onerror = () => {
+      cleanup();
+      reject(new Error('Upload failed'));
+    };
+
+    xhr.onabort = () => {
+      cleanup();
+      reject(createAbortError());
+    };
+
+    signal?.addEventListener('abort', handleAbort, { once: true });
+    xhr.send(file);
   });
 }
 
