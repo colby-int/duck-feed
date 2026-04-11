@@ -132,18 +132,63 @@ export interface CreatedStreamApiKey {
   record: StreamApiKeyRecord;
 }
 
+export interface SiteAppearance {
+  backgroundColor: string;
+  containerColor: string;
+  textColor: string;
+  logoUrl: string;
+  faviconUrl: string;
+}
+
 export interface AdminUser {
   username: string;
 }
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
+const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
+  '.ico': 'image/x-icon',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+};
 
 function buildUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
 
+function resolveApiAssetUrl(url: string): string {
+  if (!url.startsWith('/')) {
+    return url;
+  }
+
+  return buildUrl(url);
+}
+
+function inferImageUploadContentType(file: File): string {
+  if (file.type) {
+    return file.type;
+  }
+
+  const extensionMatch = /\.[^.]+$/.exec(file.name.toLowerCase());
+  if (!extensionMatch) {
+    return 'application/octet-stream';
+  }
+
+  return CONTENT_TYPE_BY_EXTENSION[extensionMatch[0]] ?? 'application/octet-stream';
+}
+
 async function parseEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
   return (await response.json()) as ApiEnvelope<T>;
+}
+
+function normalizeSiteAppearance(appearance: SiteAppearance): SiteAppearance {
+  return {
+    ...appearance,
+    faviconUrl: resolveApiAssetUrl(appearance.faviconUrl),
+    logoUrl: resolveApiAssetUrl(appearance.logoUrl),
+  };
 }
 
 export async function requestEnvelope<T>(path: string, init?: RequestInit): Promise<ApiEnvelope<T>> {
@@ -183,6 +228,50 @@ export async function logout(): Promise<void> {
 
 export async function getCurrentUser(): Promise<AdminUser> {
   return await requestData<AdminUser>('/api/auth/me');
+}
+
+export async function getSiteAppearance(): Promise<SiteAppearance> {
+  return normalizeSiteAppearance(await requestData<SiteAppearance>('/api/site-settings'));
+}
+
+export async function updateSiteAppearance(input: {
+  backgroundColor: string;
+  containerColor: string;
+  textColor: string;
+}): Promise<SiteAppearance> {
+  return normalizeSiteAppearance(
+    await requestData<SiteAppearance>('/api/admin/site-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function uploadSiteLogo(file: File): Promise<SiteAppearance> {
+  return normalizeSiteAppearance(
+    await requestData<SiteAppearance>('/api/admin/site-settings/logo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': inferImageUploadContentType(file),
+        'x-filename': file.name,
+      },
+      body: file,
+    }),
+  );
+}
+
+export async function uploadSiteFavicon(file: File): Promise<SiteAppearance> {
+  return normalizeSiteAppearance(
+    await requestData<SiteAppearance>('/api/admin/site-settings/favicon', {
+      method: 'POST',
+      headers: {
+        'Content-Type': inferImageUploadContentType(file),
+        'x-filename': file.name,
+      },
+      body: file,
+    }),
+  );
 }
 
 export async function uploadEpisode(file: File): Promise<{ filename: string; path: string }> {

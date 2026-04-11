@@ -14,6 +14,7 @@ interface Config {
   LIBRARY_DIR: string;
   DROPZONE_DIR: string;
   PROCESSING_DIR: string;
+  BRANDING_DIR: string;
 }
 
 function required(name: string): string {
@@ -62,4 +63,5 @@ export const config: Config = {
   LIBRARY_DIR: optional('LIBRARY_DIR', '/var/lib/duckfeed/library'),
   DROPZONE_DIR: optional('DROPZONE_DIR', '/var/lib/duckfeed/dropzone'),
   PROCESSING_DIR: optional('PROCESSING_DIR', '/var/lib/duckfeed/processing'),
+  BRANDING_DIR: optional('BRANDING_DIR', '/var/lib/duckfeed/branding'),
 };

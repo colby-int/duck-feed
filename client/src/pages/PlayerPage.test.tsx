@@ -1,6 +1,11 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../api/client';
+import {
+  DEFAULT_SITE_APPEARANCE,
+  SiteAppearanceContext,
+  type SiteAppearanceContextValue,
+} from '../context/site-appearance-context';
 import { PlayerPage } from './PlayerPage';
 
 vi.mock('../api/client', async () => {
@@ -67,6 +72,21 @@ function installEventSourceMock() {
   });
 }
 
+function renderPlayerPage() {
+  const contextValue: SiteAppearanceContextValue = {
+    appearance: DEFAULT_SITE_APPEARANCE,
+    loading: false,
+    refresh: vi.fn(async () => {}),
+    setAppearance: vi.fn(),
+  };
+
+  return render(
+    <SiteAppearanceContext.Provider value={contextValue}>
+      <PlayerPage />
+    </SiteAppearanceContext.Provider>,
+  );
+}
+
 describe('PlayerPage', () => {
   afterEach(() => {
     cleanup();
@@ -112,7 +132,7 @@ describe('PlayerPage', () => {
   });
 
   it('renders artwork, a Mixcloud CTA, formatted dates, and a collapsed next-up accordion showing next episode metadata', async () => {
-    render(<PlayerPage />);
+    renderPlayerPage();
 
     const artwork = await screen.findByRole('img', { name: /artwork for test pattern/i });
 
@@ -159,7 +179,7 @@ describe('PlayerPage', () => {
       throw new Error(`Unexpected request: ${path}`);
     });
 
-    render(<PlayerPage />);
+    renderPlayerPage();
 
     await waitFor(() => {
       expect(screen.getByRole('img', { name: /artwork for test pattern/i })).toHaveAttribute(
@@ -210,7 +230,7 @@ describe('PlayerPage', () => {
       throw new Error(`Unexpected request: ${path}`);
     });
 
-    render(<PlayerPage />);
+    renderPlayerPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('hero-presenter-line')).toHaveTextContent('with DJ Current');
@@ -255,7 +275,7 @@ describe('PlayerPage', () => {
       throw new Error(`Unexpected request: ${path}`);
     });
 
-    render(<PlayerPage />);
+    renderPlayerPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('hero-presenter-line')).toHaveTextContent('with DJ Current');

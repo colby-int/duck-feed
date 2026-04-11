@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 :root {
-  color: #141413;
-  background: #e68e49;
+  --site-color-brand: 230 142 73;
+  --site-color-container: 44 57 140;
+  --site-color-text: 20 20 19;
+  --site-color-brand-text: 20 20 19;
+  color: rgb(var(--site-color-brand-text));
+  background: rgb(var(--site-color-brand));
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -16,8 +20,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #e68e49;
-  color: #141413;
+  background: rgb(var(--site-color-brand));
+  color: rgb(var(--site-color-brand-text));
 }
 
 #root {

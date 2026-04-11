@@ -150,7 +150,7 @@ export function StreamPage() {
             queue
           </button>
           <button
-            className="bg-ink px-5 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white"
+            className="bg-panel px-5 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white"
             onClick={() => void skipTrack()}
             type="button"
           >
@@ -208,7 +208,7 @@ export function StreamPage() {
           <div className="mt-4 bg-white px-4 py-4 shadow-[0_0_0_1px_rgba(20,20,19,0.08)]">
             <div className="text-[0.68rem] uppercase tracking-[0.24em] text-ink/55">save this key now</div>
             <p className="mt-2 text-sm text-ink/75">This secret is only shown once.</p>
-            <code className="mt-3 block overflow-x-auto bg-ink px-4 py-3 text-sm text-white">{createdKey.key}</code>
+            <code className="mt-3 block overflow-x-auto bg-panel px-4 py-3 text-sm text-white">{createdKey.key}</code>
           </div>
         ) : null}
 
@@ -234,7 +234,7 @@ export function StreamPage() {
                 {!apiKey.revokedAt ? (
                   <button
                     aria-label={`Revoke ${apiKey.label}`}
-                    className="bg-ink px-4 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white"
+                    className="bg-panel px-4 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white"
                     onClick={() => void revokeApiKey(apiKey)}
                     type="button"
                   >

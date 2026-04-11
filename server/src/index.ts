@@ -13,6 +13,7 @@ import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { adminRoutes } from './routes/admin/index.js';
 import { publicEpisodeRoutes } from './routes/episodes.js';
+import { siteSettingsRoutes } from './routes/site-settings.js';
 import { streamRoutes } from './routes/stream.js';
 import { startPlaybackLogWriter } from './services/playback-log-writer.js';
 
@@ -56,6 +57,7 @@ async function buildServer() {
   // Routes
   await app.register(healthRoutes, { prefix: '/api' });
   await app.register(authRoutes, { prefix: '/api/auth' });
+  await app.register(siteSettingsRoutes, { prefix: '/api' });
   await app.register(publicEpisodeRoutes, { prefix: '/api/episodes' });
   await app.register(streamRoutes, { prefix: '/api/stream' });
   await app.register(adminRoutes, { prefix: '/api/admin' });

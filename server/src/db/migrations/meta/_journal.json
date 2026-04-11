@@ -29,6 +29,13 @@
       "when": 1775648180484,
       "tag": "0003_steady_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1775901747053,
+      "tag": "0004_parallel_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

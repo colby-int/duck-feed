@@ -52,7 +52,7 @@ export function AdminDashboardPage() {
             <div className="mt-2 text-3xl font-medium">{status?.librarySize ?? 0}</div>
             <p className="mt-2 text-sm text-ink/70">ready items</p>
           </div>
-          <div className="bg-ink p-5 text-white">
+          <div className="bg-panel p-5 text-white">
             <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/55">now playing</div>
             <div className="mt-2 text-2xl font-medium">
               {nowPlaying?.episode ? formatEpisodeDisplayTitle(nowPlaying.episode) : 'no match'}

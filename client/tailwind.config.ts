@@ -6,10 +6,12 @@ export default {
     extend: {
       colors: {
         parchment: '#f7f2e8',
-        ink: '#141413',
-        brand: '#E68E49',
+        panel: '#141413',
+        ink: 'rgb(var(--site-color-text) / <alpha-value>)',
+        brand: 'rgb(var(--site-color-brand) / <alpha-value>)',
+        brandtext: 'rgb(var(--site-color-brand-text) / <alpha-value>)',
         butter: '#F5C16B',
-        cobalt: '#2C398C',
+        cobalt: 'rgb(var(--site-color-container) / <alpha-value>)',
         card: '#fffaf2',
         border: '#e6ddce',
       },

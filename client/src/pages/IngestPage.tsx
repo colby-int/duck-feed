@@ -56,7 +56,7 @@ export function IngestPage() {
             type="file"
           />
           <button
-            className="bg-ink px-5 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white disabled:opacity-60"
+            className="bg-panel px-5 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white disabled:opacity-60"
             disabled={!selectedFile}
             type="submit"
           >

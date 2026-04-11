@@ -36,6 +36,7 @@ services:
       MUSICBRAINZ_CONTACT_URL: ${MUSICBRAINZ_CONTACT_URL:-https://github.com/your-username/duck-feed}
     volumes:
       - ./volumes/dropzone:/var/lib/duckfeed/dropzone
+      - ./volumes/branding:/var/lib/duckfeed/branding
       # Read-only access to /library so the manual fingerprint re-trigger
       # route in the API can run fpcalc against existing library files.
       # The server NEVER writes here — only the ingest worker does.

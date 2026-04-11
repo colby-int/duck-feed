@@ -359,7 +359,7 @@ export function EpisodeDetailPage() {
             />
           </label>
           <div className="md:col-span-2">
-            <button className="bg-ink px-5 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white" type="submit">
+            <button className="bg-panel px-5 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white" type="submit">
               save
             </button>
           </div>
@@ -378,7 +378,7 @@ export function EpisodeDetailPage() {
                 onClick={() => setTrackFilter(value)}
                 className={[
                   'px-3 py-1.5 text-[0.65rem] font-medium uppercase tracking-[0.18em] shadow-[0_0_0_1px_rgba(20,20,19,0.08)]',
-                  trackFilter === value ? 'bg-ink text-white' : 'bg-white text-ink/80 hover:bg-butter/40',
+                  trackFilter === value ? 'bg-panel text-white' : 'bg-white text-ink/80 hover:bg-butter/40',
                 ].join(' ')}
               >
                 {value}
@@ -446,7 +446,7 @@ export function EpisodeDetailPage() {
                       <button
                         type="button"
                         onClick={() => void saveEditTrack(track)}
-                        className="bg-ink px-3 py-1.5 text-[0.65rem] font-medium uppercase tracking-[0.18em] text-white"
+                        className="bg-panel px-3 py-1.5 text-[0.65rem] font-medium uppercase tracking-[0.18em] text-white"
                       >
                         save
                       </button>
@@ -475,7 +475,7 @@ export function EpisodeDetailPage() {
                       <span
                         className={[
                           'px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]',
-                          isAcoustid ? 'bg-ink text-white' : 'bg-butter text-ink',
+                          isAcoustid ? 'bg-panel text-white' : 'bg-butter text-ink',
                         ].join(' ')}
                       >
                         {source}

@@ -13,7 +13,7 @@ export function Panel({
 }) {
   return (
     <section className="bg-cobalt p-2 shadow-[0_0_0_1px_rgba(20,20,19,0.12)]">
-      <div className="bg-card px-5 py-5">
+      <div className="bg-card px-5 py-5 text-ink">
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             {subtitle ? (

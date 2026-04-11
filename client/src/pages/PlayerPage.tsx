@@ -8,6 +8,7 @@ import {
 } from '../api/client';
 import { HeroTitle } from '../components/hero-title';
 import { PublicPlayerControl } from '../components/public-player-control';
+import { useSiteAppearance } from '../hooks/use-site-appearance';
 import { useAudioMotion } from '../hooks/use-audio-motion';
 import { formatEpisodeDisplayTitle } from '../lib/episode-display-title';
 
@@ -32,6 +33,7 @@ function formatBroadcastDate(value: string | null | undefined): string | null {
 }
 
 export function PlayerPage() {
+  const { appearance } = useSiteAppearance();
   const [episodes, setEpisodes] = useState<EpisodeSummary[]>([]);
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
@@ -183,15 +185,15 @@ export function PlayerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand text-ink">
+    <div className="min-h-screen bg-brand text-brandtext">
       <main className="mx-auto flex min-h-screen max-w-[980px] flex-col px-4 py-8 sm:px-6 sm:py-14">
         <section className="flex min-h-[82vh] flex-col items-center justify-center">
           <h1 className="sr-only">duckfeed Radio</h1>
-          <img alt="duckfeed" className="w-[200px] sm:w-[280px]" src="/logo.png" />
+          <img alt="duckfeed" className="w-[200px] sm:w-[280px]" src={appearance.logoUrl} />
 
           <div className="mt-6 w-full max-w-[760px] sm:mt-10">
             <div className="bg-cobalt p-2.5 shadow-[0_18px_36px_-22px_rgba(20,20,19,0.55)] sm:p-3.5">
-              <div className="relative bg-ink px-4 py-5 text-white sm:px-7 sm:py-7">
+              <div className="relative bg-panel px-4 py-5 text-white sm:px-7 sm:py-7">
                 <div className="absolute right-4 top-4 flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.26em] sm:right-6 sm:top-5 sm:text-[0.76rem] sm:tracking-[0.28em]">
                   <span
                     className={[
@@ -214,7 +216,7 @@ export function PlayerPage() {
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-card p-5">
-                        <img alt="" className="w-full max-w-[88px] sm:max-w-[132px]" src="/logo.png" />
+                        <img alt="" className="w-full max-w-[88px] sm:max-w-[132px]" src={appearance.logoUrl} />
                       </div>
                     )}
                   </div>
@@ -276,7 +278,7 @@ export function PlayerPage() {
                 open={isQueueOpen}
                 onToggle={(event) => setIsQueueOpen((event.currentTarget as HTMLDetailsElement).open)}
               >
-                <summary className="list-none cursor-pointer bg-ink px-4 py-3 text-white sm:px-5">
+                <summary className="list-none cursor-pointer bg-panel px-4 py-3 text-white sm:px-5">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/70 sm:text-[0.72rem] sm:tracking-[0.28em]">
@@ -320,7 +322,7 @@ export function PlayerPage() {
                   </div>
                 </summary>
 
-                <div className="bg-ink px-2 pb-2 sm:px-3 sm:pb-3">
+                <div className="bg-panel px-2 pb-2 sm:px-3 sm:pb-3">
                   {upcomingEpisodes.length === 0 ? (
                     <div className="px-2 py-3 text-sm text-white/60">No additional episodes are queued in rotation right now.</div>
                   ) : (

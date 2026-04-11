@@ -1,11 +1,13 @@
 import { FormEvent, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useSiteAppearance } from '../hooks/use-site-appearance';
 import { useAuth } from '../hooks/use-auth';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, login, loading } = useAuth();
+  const { appearance } = useSiteAppearance();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,30 +37,30 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand px-5 py-10">
       <div className="w-full max-w-[540px]">
-        <img alt="duckfeed" className="mx-auto w-[250px] sm:w-[300px]" src="/logo.png" />
+        <img alt="duckfeed" className="mx-auto w-[250px] sm:w-[300px]" src={appearance.logoUrl} />
 
         <div className="mt-8 bg-cobalt p-2">
-          <div className="bg-ink px-6 py-7 text-white sm:px-8">
+          <div className="bg-panel px-6 py-7 text-white sm:px-8">
             <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/55">admin</div>
             <h1 className="mt-3 text-4xl font-medium leading-none">login</h1>
 
             <form className="mt-8 space-y-4" onSubmit={(event) => void handleSubmit(event)}>
               <label className="block">
                 <span className="mb-2 block text-[0.7rem] uppercase tracking-[0.22em] text-white/65">username</span>
-            <input
-              autoComplete="username"
-              className="w-full bg-white px-4 py-3 text-ink outline-none transition focus:ring-2 focus:ring-butter"
-              onChange={(event) => setUsername(event.target.value)}
-              value={username}
+                <input
+                  autoComplete="username"
+                  className="w-full bg-white px-4 py-3 text-ink outline-none transition focus:ring-2 focus:ring-butter"
+                  onChange={(event) => setUsername(event.target.value)}
+                  value={username}
                 />
               </label>
               <label className="block">
                 <span className="mb-2 block text-[0.7rem] uppercase tracking-[0.22em] text-white/65">password</span>
-            <input
-              autoComplete="current-password"
-              className="w-full bg-white px-4 py-3 text-ink outline-none transition focus:ring-2 focus:ring-butter"
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
+                <input
+                  autoComplete="current-password"
+                  className="w-full bg-white px-4 py-3 text-ink outline-none transition focus:ring-2 focus:ring-butter"
+                  onChange={(event) => setPassword(event.target.value)}
+                  type="password"
                   value={password}
                 />
               </label>

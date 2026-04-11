@@ -108,6 +108,18 @@ export const streamApiKeys = pgTable('stream_api_keys', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// === Site Settings ===
+export const siteSettings = pgTable('site_settings', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  backgroundColor: text('background_color'),
+  containerColor: text('container_color'),
+  textColor: text('text_color'),
+  logoAssetPath: text('logo_asset_path'),
+  faviconAssetPath: text('favicon_asset_path'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // === Relations ===
 export const episodesRelations = relations(episodes, ({ many }) => ({
   tracks: many(tracks),
@@ -162,3 +174,5 @@ export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 export type StreamApiKey = typeof streamApiKeys.$inferSelect;
 export type NewStreamApiKey = typeof streamApiKeys.$inferInsert;
+export type SiteSettings = typeof siteSettings.$inferSelect;
+export type NewSiteSettings = typeof siteSettings.$inferInsert;

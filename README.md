@@ -5,11 +5,19 @@
 # duckfeed 
 
 
-#### an infra stack / mgmt suite / user interface for self-hosting an internet radio stream from a store of audio files. designed to listen to the <a href='https://www.duckradio.live/'> duck! radio </a> archives 24/7. built to be deployable, modular & lightweight. 
+#### a modular & simple stack for streaming audio. initially created to listen to the = <a href='https://www.duckradio.live/'> duck! radio </a> archives outside of their broadcast day. 
 
-### listen to the demo stream <a href='https://duckfeed.cmr.my'> here.</a>  
+### see a frontend via the demo stream <a href='https://duckfeed.cmr.my'> here.</a>  
 
-## 
+## Overview
+
+- **Modular by design**: run the full stack together, or split the frontend, API, and streaming services as needed. Liquidsoap + Icecast keep serving audio even if the SPA or admin/API layer is unavailable.
+- **Frontend player**: public stream page with live now-playing data, play/pause controls, waveform visualiser, next-up queue, stream URL copy, Mixcloud links, and runtime branding support.
+- **Admin management**: session-authenticated admin UI for dashboard monitoring, appearance/branding changes, episode editing, ingest uploads and job history, track review, stream queue controls, and integration key management.
+- **Ingest + processing**: upload via admin or drop files into the watched dropzone, then copy, normalise, fingerprint, enrich, and prepare audio for the `/library` without mutating source files.
+- **Security + auth**: protected `/api/admin/*` routes, hashed-password login, signed sessions, revocable read-only integration API keys, and a self-hosted stack with no required external SaaS.
+
+## Stack
 
 - **Backend**: Node.js, TypeScript, Fastify, Drizzle ORM
 - **Frontend**: React, TypeScript, Vite, Tailwind CSS
@@ -17,7 +25,6 @@
 - **Streaming**: Liquidsoap + Icecast2
 - **Audio tooling**: ffmpeg, fpcalc, AcoustID, MusicBrainz
 - **Infra**: Docker Compose, Nginx
-
 
 
 ## Quick start
@@ -51,6 +58,8 @@
 
 To ingest audio, upload through `/admin/ingest` or copy files into `./volumes/dropzone/`.
 
+To change the station branding at runtime, use `/admin/appearance` to edit the shared background/container/text colors and upload a replacement logo or favicon. Uploaded branding files persist in `./volumes/branding/`.
+
 ## Environment
 
 Required in `.env`:
@@ -65,6 +74,7 @@ Optional:
 
 - `ACOUSTID_API_KEY` enables fingerprint-based track suggestions.
 - `MUSICBRAINZ_CONTACT_URL` sets the public contact URL used in MusicBrainz requests.
+- `BRANDING_DIR` overrides where uploaded logo/favicon assets are stored inside the server container.
 
 ## Production notes
 
@@ -141,7 +151,7 @@ make backup        # create a PostgreSQL backup
 - `liquidsoap/` stream rotation and queue logic
 - `icecast/` Icecast configuration
 - `nginx/` reverse-proxy config for the app and stream
-- `volumes/` local runtime data for dropzone, processing, and library
+- `volumes/` local runtime data for dropzone, processing, library, and uploaded branding assets
 
 ## License
 

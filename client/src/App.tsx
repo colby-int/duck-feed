@@ -2,8 +2,10 @@ import type { ReactElement } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { AdminShell } from './components/AdminShell';
 import { AuthProvider } from './context/AuthContext';
+import { SiteAppearanceProvider } from './context/SiteAppearanceContext';
 import { useAuth } from './hooks/use-auth';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { AppearancePage } from './pages/AppearancePage';
 import { EpisodeDetailPage } from './pages/EpisodeDetailPage';
 import { EpisodesPage } from './pages/EpisodesPage';
 import { IngestPage } from './pages/IngestPage';
@@ -40,24 +42,27 @@ function AdminAuthBoundary() {
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<PlayerPage />} path="/" />
-      <Route element={<AdminAuthBoundary />} path="/admin">
-        <Route element={<LoginPage />} path="login" />
-        <Route
-          element={
-            <RequireAuth>
-              <AdminShell />
-            </RequireAuth>
-          }
-        >
-          <Route element={<AdminDashboardPage />} index />
-          <Route element={<EpisodesPage />} path="episodes" />
-          <Route element={<EpisodeDetailPage />} path="episodes/:id" />
-          <Route element={<IngestPage />} path="ingest" />
-          <Route element={<StreamPage />} path="stream" />
+    <SiteAppearanceProvider>
+      <Routes>
+        <Route element={<PlayerPage />} path="/" />
+        <Route element={<AdminAuthBoundary />} path="/admin">
+          <Route element={<LoginPage />} path="login" />
+          <Route
+            element={
+              <RequireAuth>
+                <AdminShell />
+              </RequireAuth>
+            }
+          >
+            <Route element={<AdminDashboardPage />} index />
+            <Route element={<AppearancePage />} path="appearance" />
+            <Route element={<EpisodesPage />} path="episodes" />
+            <Route element={<EpisodeDetailPage />} path="episodes/:id" />
+            <Route element={<IngestPage />} path="ingest" />
+            <Route element={<StreamPage />} path="stream" />
+          </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+    </SiteAppearanceProvider>
   );
 }
