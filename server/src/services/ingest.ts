@@ -61,6 +61,82 @@ export async function shouldSkipSource(sourcePath: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+// In-flight states that a previous worker process might have left behind after
+// a crash/SIGTERM. On startup we assume a single-worker topology and treat any
+// such row as stale — the worker that owned it is gone.
+const STALE_IN_FLIGHT_STATES = ['queued', 'copying', 'normalising', 'fingerprinting'];
+
+/**
+ * Reconcile ingest_jobs rows left in an in-flight state by a previous worker
+ * process. Marks them failed (with episodes cascaded to 'error') so the
+ * watcher's dedup check (`shouldSkipSource`) will permit a retry, and removes
+ * the orphan {jobId}.{ext} copies in /processing.
+ *
+ * Must be called before the chokidar watcher starts on worker boot. Assumes a
+ * single ingest-worker container — if that ever changes, this needs an owner
+ * column / heartbeat before it can distinguish a crashed worker from a peer.
+ */
+export async function reconcileStaleJobs(): Promise<{ reclaimed: number }> {
+  const stale = await db
+    .select({
+      id: ingestJobs.id,
+      episodeId: ingestJobs.episodeId,
+      sourcePath: ingestJobs.sourcePath,
+      status: ingestJobs.status,
+    })
+    .from(ingestJobs)
+    .where(inArray(ingestJobs.status, STALE_IN_FLIGHT_STATES));
+
+  if (stale.length === 0) {
+    return { reclaimed: 0 };
+  }
+
+  logger.warn(
+    { count: stale.length, jobIds: stale.map((j) => j.id) },
+    'ingest: reconciling stale in-flight jobs from a previous worker run',
+  );
+
+  for (const job of stale) {
+    const processingPath = path.join(
+      config.PROCESSING_DIR,
+      `${job.id}${path.extname(job.sourcePath)}`,
+    );
+    try {
+      await fs.unlink(processingPath);
+      logger.info({ jobId: job.id, processingPath }, 'ingest: removed orphan processing file');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.warn(
+          { err, jobId: job.id, processingPath },
+          'ingest: failed to remove orphan processing file',
+        );
+      }
+    }
+  }
+
+  const staleJobIds = stale.map((j) => j.id);
+  await db
+    .update(ingestJobs)
+    .set({
+      status: 'failed',
+      errorMessage: 'worker interrupted mid-ingest; job reconciled on restart',
+      completedAt: new Date(),
+    })
+    .where(inArray(ingestJobs.id, staleJobIds));
+
+  const staleEpisodeIds = stale
+    .map((j) => j.episodeId)
+    .filter((id): id is string => id !== null);
+  if (staleEpisodeIds.length > 0) {
+    await db
+      .update(episodes)
+      .set({ status: 'error', updatedAt: new Date() })
+      .where(inArray(episodes.id, staleEpisodeIds));
+  }
+
+  return { reclaimed: stale.length };
+}
+
 interface IngestOutcome {
   episode: Episode;
   job: IngestJob;

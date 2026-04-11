@@ -6,7 +6,12 @@ import chokidar from 'chokidar';
 import { config } from './config.js';
 import { logger } from './lib/logger.js';
 import { createTaskQueue } from './lib/task-queue.js';
-import { ingestFile, isSupportedAudioFile, shouldSkipSource } from './services/ingest.js';
+import {
+  ingestFile,
+  isSupportedAudioFile,
+  reconcileStaleJobs,
+  shouldSkipSource,
+} from './services/ingest.js';
 import { pool } from './db/index.js';
 
 // Wait for a file to be fully written before processing. chokidar's awaitWriteFinish
@@ -58,6 +63,14 @@ async function start(): Promise<void> {
     },
     'ingest worker starting',
   );
+
+  // Recover anything a previous worker process left mid-ingest before the
+  // watcher scans /dropzone — otherwise those sources would be skipped forever
+  // by shouldSkipSource() and their /processing copies would keep leaking.
+  const { reclaimed } = await reconcileStaleJobs();
+  if (reclaimed > 0) {
+    logger.info({ reclaimed }, 'worker: reconciled stale in-flight jobs on startup');
+  }
 
   const watcher = chokidar.watch(config.DROPZONE_DIR, {
     ignored: (p) => p.startsWith('.') || p.endsWith('.part') || p.endsWith('.tmp'),
