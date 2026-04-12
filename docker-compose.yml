@@ -127,6 +127,7 @@ services:
     ports:
       - "80:80"
     volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/conf.d-extra:/etc/nginx/conf.d-extra:ro
