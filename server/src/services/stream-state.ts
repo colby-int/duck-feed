@@ -1,13 +1,8 @@
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { episodes, playbackLog, tracks } from '../db/schema.js';
-import {
-  getCurrentRequest,
-  getRequestMetadata,
-  getQueue,
-  getRemainingSeconds,
-  pingLiquidsoap,
-} from './liquidsoap.js';
+import { getRequestMetadata } from './liquidsoap.js';
+import { getStreamSnapshot } from './stream-poller.js';
 
 export interface StreamStatus {
   online: boolean;
@@ -170,16 +165,9 @@ async function resolveQueueEntry(rawEntry: string): Promise<StreamQueueEntry> {
 }
 
 async function getLiquidsoapNowPlaying(now: Date): Promise<NowPlaying | null> {
-  let currentRequest;
-  let remainingSeconds;
-  try {
-    [currentRequest, remainingSeconds] = await Promise.all([
-      getCurrentRequest(),
-      getRemainingSeconds(),
-    ]);
-  } catch {
-    return null;
-  }
+  const snapshot = await getStreamSnapshot();
+  const currentRequest = snapshot.currentRequest;
+  const remainingSeconds = snapshot.remainingSeconds;
 
   if (!currentRequest?.filePath) {
     return null;
@@ -220,36 +208,23 @@ async function getLiquidsoapNowPlaying(now: Date): Promise<NowPlaying | null> {
 }
 
 export async function getStreamStatus(): Promise<StreamStatus> {
-  const [online, readyEpisodes] = await Promise.all([
-    pingLiquidsoap(),
+  const [snapshot, readyEpisodes] = await Promise.all([
+    getStreamSnapshot(),
     db.select({ id: episodes.id }).from(episodes).where(eq(episodes.status, 'ready')),
   ]);
 
-  let queueLength = 0;
-  if (online) {
-    try {
-      queueLength = (await getQueue()).length;
-    } catch {
-      queueLength = 0;
-    }
-  }
-
   return {
-    online,
-    queueLength,
+    online: snapshot.online,
+    queueLength: snapshot.online ? snapshot.queue.length : 0,
     librarySize: readyEpisodes.length,
     streamUrl: '/stream',
-    checkedAt: new Date().toISOString(),
+    checkedAt: snapshot.checkedAt,
   };
 }
 
 export async function getStreamQueue(): Promise<StreamQueueEntry[]> {
-  let queue: string[];
-  try {
-    queue = await getQueue();
-  } catch {
-    return [];
-  }
+  const snapshot = await getStreamSnapshot();
+  const queue = snapshot.online ? snapshot.queue : [];
 
   return await Promise.all(
     queue.map(async (entry) => {
