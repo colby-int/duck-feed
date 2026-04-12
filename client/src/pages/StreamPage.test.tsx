@@ -51,6 +51,22 @@ describe('StreamPage', () => {
         return ['12'];
       }
 
+      if (path === '/api/admin/stream/rotation' && !init?.method) {
+        return [
+          {
+            id: 'rotation-1',
+            position: 1,
+            episode: {
+              id: 'episode-1',
+              title: 'Episode 1',
+              presenter: 'DJ Example',
+              slug: 'episode-1',
+              broadcastDate: '2026-04-08',
+            },
+          },
+        ];
+      }
+
       if (path === '/api/admin/episodes?limit=50') {
         return readyEpisodes;
       }
@@ -95,6 +111,22 @@ describe('StreamPage', () => {
         };
       }
 
+      if (path === '/api/admin/stream/rotation/shuffle' && init?.method === 'POST') {
+        return [
+          {
+            id: 'rotation-2',
+            position: 1,
+            episode: {
+              id: 'episode-1',
+              title: 'Episode 1',
+              presenter: 'DJ Example',
+              slug: 'episode-1',
+              broadcastDate: '2026-04-08',
+            },
+          },
+        ];
+      }
+
       if (path === '/api/admin/stream/skip' && init?.method === 'POST') {
         return undefined;
       }
@@ -115,6 +147,8 @@ describe('StreamPage', () => {
 
     expect(await screen.findByText('Main site')).toBeInTheDocument();
     expect(screen.getByText('dfs_abc123')).toBeInTheDocument();
+    expect(screen.getByText(/Rotation queue/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Episode 1').length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText(/key label/i), {
       target: { value: 'Companion app' },
@@ -131,6 +165,16 @@ describe('StreamPage', () => {
     await waitFor(() => {
       const statuses = screen.getAllByText(/revoked|active/i);
       expect(statuses.some((status) => status.textContent === 'revoked')).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /shuffle queue/i }));
+
+    await waitFor(() => {
+      expect(requestDataMock).toHaveBeenCalledWith('/api/admin/stream/rotation/shuffle', {
+        body: JSON.stringify({ count: 12 }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
     });
   });
 });

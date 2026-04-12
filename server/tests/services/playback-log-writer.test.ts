@@ -10,6 +10,10 @@ const liquidsoapMock = vi.hoisted(() => ({
   getStreamSnapshot: vi.fn(),
 }));
 
+const icecastMock = vi.hoisted(() => ({
+  fetchCurrentListenerCount: vi.fn(),
+}));
+
 vi.mock('../../src/db/index.js', () => ({
   db: {
     select: dbMock.select,
@@ -19,6 +23,7 @@ vi.mock('../../src/db/index.js', () => ({
 }));
 
 vi.mock('../../src/services/stream-poller.js', () => liquidsoapMock);
+vi.mock('../../src/services/icecast.js', () => icecastMock);
 
 describe('playback-log writer', () => {
   beforeEach(() => {
@@ -31,6 +36,8 @@ describe('playback-log writer', () => {
     dbMock.update.mockReset();
     dbMock.insert.mockReset();
     liquidsoapMock.getStreamSnapshot.mockReset();
+    icecastMock.fetchCurrentListenerCount.mockReset();
+    icecastMock.fetchCurrentListenerCount.mockResolvedValue(0);
   });
 
   function mockEpisodeLookup(episode: { id: string } | null) {
@@ -40,7 +47,17 @@ describe('playback-log writer', () => {
     return { from };
   }
 
-  function mockOpenRowLookup(openRow: { id: string; episodeId: string } | null) {
+  function mockOpenRowLookup(
+    openRow:
+      | {
+          id: string;
+          episodeId: string;
+          listenerPeak?: number | null;
+          listenerSamples?: number | null;
+          listenerTotal?: number | null;
+        }
+      | null,
+  ) {
     const limit = vi.fn().mockResolvedValue(openRow ? [openRow] : []);
     const orderBy = vi.fn(() => ({ limit }));
     const where = vi.fn(() => ({ orderBy }));
@@ -75,12 +92,25 @@ describe('playback-log writer', () => {
 
     dbMock.select
       .mockReturnValueOnce(mockEpisodeLookup({ id: 'episode-a' })) // file → episode
-      .mockReturnValueOnce(mockOpenRowLookup({ id: 'log-1', episodeId: 'episode-a' })); // open row
+      .mockReturnValueOnce(
+        mockOpenRowLookup({
+          id: 'log-1',
+          episodeId: 'episode-a',
+          listenerPeak: 2,
+          listenerSamples: 1,
+          listenerTotal: 2,
+        }),
+      ); // open row
+
+    icecastMock.fetchCurrentListenerCount.mockResolvedValue(3);
+
+    const { whereSpy } = mockUpdate();
 
     const { tickPlaybackLog } = await import('../../src/services/playback-log-writer.js');
     await tickPlaybackLog(new Date('2026-04-07T00:00:00Z'));
 
-    expect(dbMock.update).not.toHaveBeenCalled();
+    expect(dbMock.update).toHaveBeenCalledTimes(1);
+    expect(whereSpy).toHaveBeenCalledTimes(1);
     expect(dbMock.insert).not.toHaveBeenCalled();
   });
 

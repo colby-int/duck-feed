@@ -2,6 +2,13 @@
 // Fails fast if required variables are missing.
 
 interface Config {
+  ICECAST_ADMIN_PASSWORD: string | null;
+  ICECAST_ADMIN_USERNAME: string;
+  ICECAST_HOST: string;
+  ICECAST_PORT: number;
+  DUCKHAUS_API_TOKEN: string | null;
+  DUCKHAUS_BASE_URL: string | null;
+  ROTATION_CACHE_MAX_BYTES: number;
   DATABASE_URL: string;
   SESSION_SECRET: string;
   LOG_LEVEL: string;
@@ -51,6 +58,13 @@ function positiveIntEnv(name: string, fallback: number): number {
 }
 
 export const config: Config = {
+  ICECAST_ADMIN_PASSWORD: process.env.ICECAST_ADMIN_PASSWORD ?? null,
+  ICECAST_ADMIN_USERNAME: optional('ICECAST_ADMIN_USERNAME', 'admin'),
+  ICECAST_HOST: optional('ICECAST_HOST', 'icecast'),
+  ICECAST_PORT: intEnv('ICECAST_PORT', 8000),
+  DUCKHAUS_API_TOKEN: process.env.DUCKHAUS_API_TOKEN ?? null,
+  DUCKHAUS_BASE_URL: process.env.DUCKHAUS_BASE_URL ?? null,
+  ROTATION_CACHE_MAX_BYTES: positiveIntEnv('ROTATION_CACHE_MAX_BYTES', 3_500_000_000),
   DATABASE_URL: required('DATABASE_URL'),
   SESSION_SECRET: required('SESSION_SECRET'),
   LOG_LEVEL: optional('LOG_LEVEL', 'info'),

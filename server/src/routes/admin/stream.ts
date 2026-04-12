@@ -9,6 +9,12 @@ import {
   revokeStreamApiKey,
 } from '../../services/stream-api-keys.js';
 import {
+  listRotationQueue,
+  moveRotationQueueEntryToFront,
+  removeRotationQueueEntry,
+  shuffleRotationQueue,
+} from '../../services/rotation-queue.js';
+import {
   getCurrentRequest,
   getQueue,
   pushQueue,
@@ -16,6 +22,58 @@ import {
 } from '../../services/liquidsoap.js';
 
 export async function adminStreamRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/rotation', async () => {
+    return {
+      data: await listRotationQueue(),
+      error: null,
+      meta: null,
+    };
+  });
+
+  app.post(
+    '/rotation/shuffle',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['count'],
+          additionalProperties: false,
+          properties: {
+            count: { type: 'integer', minimum: 1, maximum: 100 },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const { count } = request.body as { count: number };
+      return {
+        data: await shuffleRotationQueue(count),
+        error: null,
+        meta: null,
+      };
+    },
+  );
+
+  app.post('/rotation/:id/move-to-front', async (request) => {
+    const { id } = request.params as { id: string };
+    await moveRotationQueueEntryToFront(id);
+    return {
+      data: await listRotationQueue(),
+      error: null,
+      meta: null,
+    };
+  });
+
+  app.delete('/rotation/:id', async (request) => {
+    const { id } = request.params as { id: string };
+    await removeRotationQueueEntry(id);
+    return {
+      data: await listRotationQueue(),
+      error: null,
+      meta: null,
+    };
+  });
+
   app.get('/api-keys', async () => {
     return {
       data: await listStreamApiKeys(),

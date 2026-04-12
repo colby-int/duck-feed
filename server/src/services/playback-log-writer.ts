@@ -21,6 +21,7 @@ import { desc, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { episodes, playbackLog } from '../db/schema.js';
 import { logger } from '../lib/logger.js';
+import { fetchCurrentListenerCount } from './icecast.js';
 import { getStreamSnapshot } from './stream-poller.js';
 
 const POLL_INTERVAL_MS = 10_000;
@@ -44,7 +45,13 @@ export async function tickPlaybackLog(now: Date = new Date()): Promise<void> {
 
   // Find the latest open playback_log row.
   const [openRow] = await db
-    .select({ id: playbackLog.id, episodeId: playbackLog.episodeId })
+    .select({
+      id: playbackLog.id,
+      episodeId: playbackLog.episodeId,
+      listenerPeak: playbackLog.listenerPeak,
+      listenerSamples: playbackLog.listenerSamples,
+      listenerTotal: playbackLog.listenerTotal,
+    })
     .from(playbackLog)
     .where(isNull(playbackLog.endedAt))
     .orderBy(desc(playbackLog.startedAt))
@@ -52,6 +59,15 @@ export async function tickPlaybackLog(now: Date = new Date()): Promise<void> {
 
   // No transition if the open row already matches the current episode.
   if (openRow && openRow.episodeId === currentEpisodeId) {
+    const listeners = await fetchCurrentListenerCount();
+    await db
+      .update(playbackLog)
+      .set({
+        listenerPeak: Math.max(openRow.listenerPeak ?? 0, listeners),
+        listenerSamples: (openRow.listenerSamples ?? 0) + 1,
+        listenerTotal: (openRow.listenerTotal ?? 0) + listeners,
+      })
+      .where(eq(playbackLog.id, openRow.id));
     return;
   }
 

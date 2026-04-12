@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { episodes, playbackLog, tracks } from '../db/schema.js';
 import { getRequestMetadata } from './liquidsoap.js';
@@ -210,7 +210,10 @@ async function getLiquidsoapNowPlaying(now: Date): Promise<NowPlaying | null> {
 export async function getStreamStatus(): Promise<StreamStatus> {
   const [snapshot, readyEpisodes] = await Promise.all([
     getStreamSnapshot(),
-    db.select({ id: episodes.id }).from(episodes).where(eq(episodes.status, 'ready')),
+    db
+      .select({ id: episodes.id })
+      .from(episodes)
+      .where(and(eq(episodes.status, 'ready'), isNotNull(episodes.filePath))),
   ]);
 
   return {

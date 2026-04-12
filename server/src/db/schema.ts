@@ -61,7 +61,23 @@ export const playbackLog = pgTable('playback_log', {
     .references(() => episodes.id),
   startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
+  listenerPeak: integer('listener_peak'),
+  listenerTotal: integer('listener_total'),
+  listenerSamples: integer('listener_samples'),
+  rotationOutcome: text('rotation_outcome'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// === Rotation Queue ===
+export const rotationQueueEntries = pgTable('rotation_queue_entries', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  episodeId: uuid('episode_id')
+    .notNull()
+    .references(() => episodes.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  source: text('source').notNull().default('auto'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 // === Ingest Jobs ===
@@ -124,6 +140,7 @@ export const siteSettings = pgTable('site_settings', {
 export const episodesRelations = relations(episodes, ({ many }) => ({
   tracks: many(tracks),
   playbackLog: many(playbackLog),
+  rotationQueueEntries: many(rotationQueueEntries),
   ingestJobs: many(ingestJobs),
 }));
 
@@ -137,6 +154,13 @@ export const tracksRelations = relations(tracks, ({ one }) => ({
 export const playbackLogRelations = relations(playbackLog, ({ one }) => ({
   episode: one(episodes, {
     fields: [playbackLog.episodeId],
+    references: [episodes.id],
+  }),
+}));
+
+export const rotationQueueEntriesRelations = relations(rotationQueueEntries, ({ one }) => ({
+  episode: one(episodes, {
+    fields: [rotationQueueEntries.episodeId],
     references: [episodes.id],
   }),
 }));
@@ -166,6 +190,8 @@ export type Track = typeof tracks.$inferSelect;
 export type NewTrack = typeof tracks.$inferInsert;
 export type PlaybackLogEntry = typeof playbackLog.$inferSelect;
 export type NewPlaybackLogEntry = typeof playbackLog.$inferInsert;
+export type RotationQueueEntry = typeof rotationQueueEntries.$inferSelect;
+export type NewRotationQueueEntry = typeof rotationQueueEntries.$inferInsert;
 export type IngestJob = typeof ingestJobs.$inferSelect;
 export type NewIngestJob = typeof ingestJobs.$inferInsert;
 export type User = typeof users.$inferSelect;

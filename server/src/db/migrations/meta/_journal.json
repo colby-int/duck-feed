@@ -36,6 +36,13 @@
       "when": 1775901747053,
       "tag": "0004_parallel_kat_farrell",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775991528450,
+      "tag": "0005_mighty_bucky",
+      "breakpoints": true
     }
   ]
 }

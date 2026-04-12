@@ -3,6 +3,7 @@ import {
   requestData,
   type CreatedStreamApiKey,
   type EpisodeSummary,
+  type RotationQueueEntry,
   type StreamApiKeyRecord,
 } from '../api/client';
 import { Panel } from '../components/Panel';
@@ -20,6 +21,7 @@ function formatUsageTimestamp(value: string | null): string {
 
 export function StreamPage() {
   const [queue, setQueue] = useState<string[]>([]);
+  const [rotationQueue, setRotationQueue] = useState<RotationQueueEntry[]>([]);
   const [episodes, setEpisodes] = useState<EpisodeSummary[]>([]);
   const [apiKeys, setApiKeys] = useState<StreamApiKeyRecord[]>([]);
   const [selectedEpisodeId, setSelectedEpisodeId] = useState('');
@@ -31,12 +33,14 @@ export function StreamPage() {
   async function refresh(): Promise<void> {
     try {
       setError(null);
-      const [queueItems, nextEpisodes, nextApiKeys] = await Promise.all([
+      const [queueItems, nextRotationQueue, nextEpisodes, nextApiKeys] = await Promise.all([
         requestData<string[]>('/api/admin/stream/queue'),
+        requestData<RotationQueueEntry[]>('/api/admin/stream/rotation'),
         requestData<EpisodeSummary[]>('/api/admin/episodes?limit=50'),
         requestData<StreamApiKeyRecord[]>('/api/admin/stream/api-keys'),
       ]);
       setQueue(queueItems);
+      setRotationQueue(nextRotationQueue);
       const readyEpisodes = nextEpisodes.filter((episode) => episode.status === 'ready');
       setEpisodes(readyEpisodes);
       setApiKeys(nextApiKeys);
@@ -131,6 +135,21 @@ export function StreamPage() {
     }
   }
 
+  async function shuffleRotationQueue(): Promise<void> {
+    try {
+      setError(null);
+      const nextQueue = await requestData<RotationQueueEntry[]>('/api/admin/stream/rotation/shuffle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: 12 }),
+      });
+      setRotationQueue(nextQueue);
+      setMessage('Rotation queue shuffled');
+    } catch (rotationError) {
+      setError(rotationError instanceof Error ? rotationError.message : 'Failed to shuffle rotation queue');
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Panel title="Queue" subtitle="control">
@@ -166,6 +185,46 @@ export function StreamPage() {
         </form>
         {message ? <p className="mt-4 text-sm text-green-700">{message}</p> : null}
         {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
+      </Panel>
+
+      <Panel title="Rotation queue" subtitle="auto">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-ink/65">
+            {rotationQueue.length === 0
+              ? 'No queued episodes yet.'
+              : `${rotationQueue.length} episodes staged for the stream rotation.`}
+          </p>
+          <button
+            className="bg-butter px-4 py-3 text-sm font-medium uppercase tracking-[0.18em] text-ink"
+            onClick={() => void shuffleRotationQueue()}
+            type="button"
+          >
+            shuffle queue
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {rotationQueue.length === 0 ? (
+            <div className="bg-white px-4 py-4 text-sm text-ink/65 shadow-[0_0_0_1px_rgba(20,20,19,0.08)]">
+              Rotation queue is empty.
+            </div>
+          ) : (
+            rotationQueue.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex flex-col gap-1 bg-white px-4 py-4 shadow-[0_0_0_1px_rgba(20,20,19,0.08)]"
+              >
+                <div className="text-[0.68rem] uppercase tracking-[0.18em] text-ink/55">
+                  slot {entry.position}
+                </div>
+                <div className="text-sm font-medium text-ink">{entry.episode.title}</div>
+                <div className="text-sm text-ink/70">
+                  {entry.episode.presenter ?? 'Unknown presenter'}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </Panel>
 
       <Panel title="Requests" subtitle="raw">

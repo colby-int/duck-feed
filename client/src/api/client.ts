@@ -91,6 +91,18 @@ export interface StreamQueueEntry {
   } | null;
 }
 
+export interface RotationQueueEntry {
+  id: string;
+  position: number;
+  episode: {
+    id: string;
+    title: string;
+    presenter: string | null;
+    slug: string;
+    broadcastDate: string | null;
+  };
+}
+
 export interface NowPlaying {
   startedAt: string;
   elapsedSeconds: number;

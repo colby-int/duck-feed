@@ -23,6 +23,13 @@ const streamApiKeysMock = vi.hoisted(() => ({
   revokeStreamApiKey: vi.fn(),
 }));
 
+const rotationQueueMock = vi.hoisted(() => ({
+  listRotationQueue: vi.fn(),
+  moveRotationQueueEntryToFront: vi.fn(),
+  removeRotationQueueEntry: vi.fn(),
+  shuffleRotationQueue: vi.fn(),
+}));
+
 vi.mock('../../../src/db/index.js', () => ({
   db: {
     select: dbMock.select,
@@ -31,6 +38,7 @@ vi.mock('../../../src/db/index.js', () => ({
 
 vi.mock('../../../src/services/liquidsoap.js', () => liquidsoapMock);
 vi.mock('../../../src/services/stream-api-keys.js', () => streamApiKeysMock);
+vi.mock('../../../src/services/rotation-queue.js', () => rotationQueueMock);
 
 describe('admin stream routes', () => {
   beforeEach(() => {
@@ -46,6 +54,10 @@ describe('admin stream routes', () => {
     streamApiKeysMock.listStreamApiKeys.mockReset();
     streamApiKeysMock.createStreamApiKey.mockReset();
     streamApiKeysMock.revokeStreamApiKey.mockReset();
+    rotationQueueMock.listRotationQueue.mockReset();
+    rotationQueueMock.moveRotationQueueEntryToFront.mockReset();
+    rotationQueueMock.removeRotationQueueEntry.mockReset();
+    rotationQueueMock.shuffleRotationQueue.mockReset();
 
     dbMock.limit.mockResolvedValue([
       {
@@ -89,6 +101,32 @@ describe('admin stream routes', () => {
       lastUsedAt: null,
       revokedAt: '2026-04-08T02:00:00.000Z',
     });
+    rotationQueueMock.listRotationQueue.mockResolvedValue([
+      {
+        id: 'rotation-1',
+        position: 1,
+        episode: {
+          id: '11111111-1111-4111-8111-111111111111',
+          title: 'Episode 1',
+          presenter: 'DJ Example',
+          slug: 'episode-1',
+          broadcastDate: '2026-04-08',
+        },
+      },
+    ]);
+    rotationQueueMock.shuffleRotationQueue.mockResolvedValue([
+      {
+        id: 'rotation-1',
+        position: 1,
+        episode: {
+          id: '11111111-1111-4111-8111-111111111111',
+          title: 'Episode 1',
+          presenter: 'DJ Example',
+          slug: 'episode-1',
+          broadcastDate: '2026-04-08',
+        },
+      },
+    ]);
   });
 
   it('restarts the currently playing episode by re-queuing and skipping', async () => {
@@ -159,6 +197,56 @@ describe('admin stream routes', () => {
       error: null,
       meta: null,
     });
+
+    await app.close();
+  });
+
+  it('lists the admin rotation queue', async () => {
+    const { adminStreamRoutes } = await import('../../../src/routes/admin/stream.js');
+    const app = Fastify();
+    await app.register(adminStreamRoutes);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/rotation',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      data: [
+        {
+          id: 'rotation-1',
+          position: 1,
+          episode: {
+            id: '11111111-1111-4111-8111-111111111111',
+            title: 'Episode 1',
+            presenter: 'DJ Example',
+            slug: 'episode-1',
+            broadcastDate: '2026-04-08',
+          },
+        },
+      ],
+      error: null,
+      meta: null,
+    });
+
+    await app.close();
+  });
+
+  it('reshuffles the rotation queue', async () => {
+    const { adminStreamRoutes } = await import('../../../src/routes/admin/stream.js');
+    const app = Fastify();
+    await app.register(adminStreamRoutes);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/rotation/shuffle',
+      payload: { count: 12 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rotationQueueMock.shuffleRotationQueue).toHaveBeenCalledWith(12);
+    expect(response.json().data).toHaveLength(1);
 
     await app.close();
   });

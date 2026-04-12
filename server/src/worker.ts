@@ -12,6 +12,10 @@ import {
   reconcileStaleJobs,
   shouldSkipSource,
 } from './services/ingest.js';
+import {
+  startRotationManager,
+  stopRotationManager,
+} from './services/rotation-manager.js';
 import { pool } from './db/index.js';
 
 // Wait for a file to be fully written before processing. chokidar's awaitWriteFinish
@@ -72,6 +76,8 @@ async function start(): Promise<void> {
     logger.info({ reclaimed }, 'worker: reconciled stale in-flight jobs on startup');
   }
 
+  startRotationManager();
+
   const watcher = chokidar.watch(config.DROPZONE_DIR, {
     ignored: (p) => p.startsWith('.') || p.endsWith('.part') || p.endsWith('.tmp'),
     ignoreInitial: false, // pick up files added while worker was down
@@ -107,6 +113,7 @@ async function start(): Promise<void> {
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'worker: shutting down');
+    stopRotationManager();
     await watcher.close();
     await pool.end();
     process.exit(0);
