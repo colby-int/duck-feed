@@ -21,7 +21,7 @@ RUN npm run build
 FROM node:22-alpine AS production
 WORKDIR /app
 
-RUN apk add --no-cache ffmpeg chromaprint wget
+RUN apk add --no-cache ffmpeg chromaprint wget yt-dlp
 
 COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/src/db ./src/db
