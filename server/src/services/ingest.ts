@@ -37,6 +37,7 @@ import {
   validateAudioFile,
 } from './audio-validation.js';
 import { validateMixcloudMetadata } from './mixcloud-validator.js';
+import { buildMixcloudTitle } from './metadata-reconciler.js';
 import { config } from '../config.js';
 import { pushQueue } from './liquidsoap.js';
 
@@ -347,9 +348,17 @@ async function runPipeline(episode: Episode, job: IngestJob): Promise<IngestOutc
 }
 
 async function validateMetadataStep(episode: Episode): Promise<void> {
-  const isValid = await validateMixcloudMetadata(episode.title);
+  const mixcloudTitle = buildMixcloudTitle(
+    episode.title,
+    episode.presenter,
+    episode.broadcastDate,
+  );
+  const isValid = await validateMixcloudMetadata(mixcloudTitle);
   if (!isValid) {
-    logger.warn({ episodeId: episode.id, title: episode.title }, 'ingest: metadata validation failed');
+    logger.warn(
+      { episodeId: episode.id, mixcloudTitle },
+      'ingest: metadata validation failed — no Mixcloud match',
+    );
   }
 }
 
