@@ -28,7 +28,6 @@ async function start(): Promise<void> {
   intervalHandle = setInterval(() => {
     void runRecoveryPass('interval');
   }, config.METADATA_RECOVERY_INTERVAL_MS);
-  intervalHandle.unref();
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'metadata-worker: shutting down');
