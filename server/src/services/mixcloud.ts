@@ -44,7 +44,10 @@ export async function discoverMixcloudEpisodes(
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const episodes = await Promise.all(urls.map(async (url) => await fetchMixcloudEpisode(url)));
+  const episodes: Array<MixcloudEpisodeMetadata | null> = [];
+  for (const url of urls) {
+    episodes.push(await fetchMixcloudEpisode(url));
+  }
   return episodes.filter((episode): episode is MixcloudEpisodeMetadata => episode !== null);
 }
 
