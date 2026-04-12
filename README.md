@@ -166,6 +166,7 @@ make backup        # create a PostgreSQL backup
 ## Project layout
 
 - `server/` Fastify API, worker, schema, migrations, tests
+  - Note: `server/src/services/mixcloud-validator.ts` is specifically tailored for the Duck Radio use case.
 - `client/` React SPA for the public player and admin UI
 - `liquidsoap/` stream rotation and queue logic
 - `icecast/` Icecast configuration

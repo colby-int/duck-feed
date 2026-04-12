@@ -31,6 +31,7 @@ import {
   isFingerprintingEnabled,
   FingerprintingDisabledError,
 } from './fingerprint.js';
+import { validateMixcloudMetadata } from './mixcloud-validator.js';
 import { config } from '../config.js';
 import { pushQueue } from './liquidsoap.js';
 
@@ -318,8 +319,16 @@ async function runPipeline(episode: Episode, job: IngestJob): Promise<IngestOutc
   // 'ready' and visible in the admin UI, so any failure here is logged
   // and swallowed — fingerprinting is enrichment, never a blocker.
   await runFingerprintStep(updatedEpisode.id, libraryPath);
+  await validateMetadataStep(updatedEpisode);
 
   return { episode: updatedEpisode, job: updatedJob };
+}
+
+async function validateMetadataStep(episode: Episode): Promise<void> {
+  const isValid = await validateMixcloudMetadata(episode.title);
+  if (!isValid) {
+    logger.warn({ episodeId: episode.id, title: episode.title }, 'ingest: metadata validation failed');
+  }
 }
 
 async function queueEpisode(episode: Episode): Promise<void> {

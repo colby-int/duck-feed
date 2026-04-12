@@ -95,8 +95,17 @@ endif
 build: ## Build all Docker images
 	docker compose $(PROD_COMPOSE_FILES) build
 
-deploy: verify-prod-invariants ## Build and restart production services
-	docker compose $(PROD_COMPOSE_FILES) up --build -d
+deploy: ## Push, pull on prod, build, deploy containers + frontend
+	bash scripts/deploy.sh
+
+deploy-backend: ## Deploy backend only (no frontend)
+	bash scripts/deploy.sh --backend
+
+deploy-frontend: ## Deploy frontend only (Cloudflare Pages)
+	bash scripts/deploy.sh --frontend
+
+deploy-dry-run: ## Preflight checks only — no changes
+	bash scripts/deploy.sh --dry-run
 
 # === Testing ===
 

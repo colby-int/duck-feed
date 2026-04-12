@@ -15,6 +15,8 @@ import {
   persistFingerprintMatches,
   FingerprintingDisabledError,
 } from '../../services/fingerprint.js';
+import { reconcileMetadata } from '../../services/metadata-reconciler.js';
+import { validateMixcloudMetadata } from '../../services/mixcloud-validator.js';
 
 const EPISODE_STATUS = ['pending', 'processing', 'ready', 'error'] as const;
 
@@ -280,6 +282,44 @@ export async function adminEpisodeRoutes(app: FastifyInstance): Promise<void> {
 
       reply.status(204);
       return null;
+    },
+  );
+
+  // === Reconcile Metadata ===
+  app.post(
+    '/:id/reconcile',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: { id: { type: 'string', format: 'uuid' } },
+        },
+      },
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const episode = await findEpisodeById(id);
+
+      const reconciled = await reconcileMetadata(episode);
+      let isValid = false;
+      if (reconciled.title) {
+        isValid = await validateMixcloudMetadata(reconciled.title);
+      }
+
+      await db
+        .update(episodes)
+        .set({
+          title: reconciled.title,
+          // Assuming artist might be used later or in a future field
+        })
+        .where(eq(episodes.id, id));
+
+      return {
+        data: { reconciled, isValid },
+        error: null,
+        meta: null,
+      };
     },
   );
 

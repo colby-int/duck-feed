@@ -63,3 +63,5 @@ episodes/
 /package-lock.json
 /scripts/tests/ingest.test.mjs
 /scripts/tests/mixcloud.test.mjs
+/docs/features
+/scripts/deploy.sh
