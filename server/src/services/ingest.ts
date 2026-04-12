@@ -31,6 +31,11 @@ import {
   isFingerprintingEnabled,
   FingerprintingDisabledError,
 } from './fingerprint.js';
+import {
+  AudioValidationError,
+  quarantineInvalidAudioArtifacts,
+  validateAudioFile,
+} from './audio-validation.js';
 import { validateMixcloudMetadata } from './mixcloud-validator.js';
 import { config } from '../config.js';
 import { pushQueue } from './liquidsoap.js';
@@ -267,6 +272,23 @@ async function runPipeline(episode: Episode, job: IngestJob): Promise<IngestOutc
     artist: episode.presenter ?? undefined,
     title: formatEpisodeDisplayTitle(episode.title, episode.presenter),
   });
+  try {
+    await validateAudioFile(libraryPath);
+  } catch (error) {
+    if (error instanceof AudioValidationError) {
+      const quarantinedPath = await quarantineInvalidAudioArtifacts({
+        jobId: job.id,
+        originalFilename: episode.originalFilename ?? path.basename(job.sourcePath),
+        processingPath,
+        libraryPath,
+      });
+      logger.warn(
+        { jobId: job.id, episodeId: episode.id, libraryPath, quarantinedPath },
+        'ingest: quarantined invalid normalized audio output',
+      );
+    }
+    throw error;
+  }
 
   // Step 4: hash the normalised output for integrity/dedup reference.
   const fileHash = await sha256File(libraryPath);

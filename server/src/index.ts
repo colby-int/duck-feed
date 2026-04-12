@@ -16,6 +16,7 @@ import { publicEpisodeRoutes } from './routes/episodes.js';
 import { siteSettingsRoutes } from './routes/site-settings.js';
 import { streamRoutes } from './routes/stream.js';
 import { startPlaybackLogWriter } from './services/playback-log-writer.js';
+import { startStreamPoller } from './services/stream-poller.js';
 
 async function buildServer() {
   const app = Fastify({
@@ -70,6 +71,7 @@ async function start() {
   try {
     await app.listen({ port: config.PORT, host: '0.0.0.0' });
     logger.info({ port: config.PORT }, 'API server started');
+    startStreamPoller();
     // Start the playback-log writer after the HTTP server is listening so we
     // never block startup on a Liquidsoap connectivity hiccup.
     startPlaybackLogWriter();

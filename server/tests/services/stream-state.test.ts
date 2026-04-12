@@ -5,11 +5,11 @@ const dbMock = vi.hoisted(() => ({
 }));
 
 const liquidsoapMock = vi.hoisted(() => ({
-  getQueue: vi.fn(),
-  pingLiquidsoap: vi.fn(),
-  getCurrentRequest: vi.fn(),
-  getRemainingSeconds: vi.fn(),
   getRequestMetadata: vi.fn(),
+}));
+
+const streamPollerMock = vi.hoisted(() => ({
+  getStreamSnapshot: vi.fn(),
 }));
 
 vi.mock('../../src/db/index.js', () => ({
@@ -19,16 +19,14 @@ vi.mock('../../src/db/index.js', () => ({
 }));
 
 vi.mock('../../src/services/liquidsoap.js', () => liquidsoapMock);
+vi.mock('../../src/services/stream-poller.js', () => streamPollerMock);
 
 describe('stream state service', () => {
   beforeEach(() => {
     vi.resetModules();
     dbMock.select.mockReset();
-    liquidsoapMock.getQueue.mockReset();
-    liquidsoapMock.pingLiquidsoap.mockReset();
-    liquidsoapMock.getCurrentRequest.mockReset();
-    liquidsoapMock.getRemainingSeconds.mockReset();
     liquidsoapMock.getRequestMetadata.mockReset();
+    streamPollerMock.getStreamSnapshot.mockReset();
   });
 
   it('falls back to the current Liquidsoap request when playback_log is empty', async () => {
@@ -78,17 +76,21 @@ describe('stream state service', () => {
       .mockImplementationOnce(() => ({ from: episodeFrom }))
       .mockImplementationOnce(() => ({ from: tracksFrom }));
 
-    liquidsoapMock.getCurrentRequest.mockResolvedValue({
-      requestId: '12',
-      filePath: '/var/lib/duckfeed/library/episode-1.mp3',
+    streamPollerMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: {
+        requestId: '12',
+        filePath: '/var/lib/duckfeed/library/episode-1.mp3',
+      },
+      online: true,
+      queue: [],
+      remainingSeconds: 30,
     });
-    liquidsoapMock.getRemainingSeconds.mockResolvedValue(30);
 
     const { getCurrentNowPlaying } = await import('../../src/services/stream-state.js');
     const result = await getCurrentNowPlaying(now);
 
-    expect(liquidsoapMock.getCurrentRequest).toHaveBeenCalledTimes(1);
-    expect(liquidsoapMock.getRemainingSeconds).toHaveBeenCalledTimes(1);
+    expect(streamPollerMock.getStreamSnapshot).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       startedAt: '2026-04-07T01:58:30.000Z',
       elapsedSeconds: 90,
@@ -133,7 +135,13 @@ describe('stream state service', () => {
       .mockImplementationOnce(() => ({ from: firstQueueEpisodeFrom }))
       .mockImplementationOnce(() => ({ from: secondQueueEpisodeFrom }));
 
-    liquidsoapMock.getQueue.mockResolvedValue(['12', '14']);
+    streamPollerMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: null,
+      online: true,
+      queue: ['12', '14'],
+      remainingSeconds: null,
+    });
     liquidsoapMock.getRequestMetadata
       .mockResolvedValueOnce({
         filePath: '/var/lib/duckfeed/library/night-drive.mp3',
@@ -147,7 +155,7 @@ describe('stream state service', () => {
     const { getStreamQueue } = await import('../../src/services/stream-state.js');
     const result = await getStreamQueue();
 
-    expect(liquidsoapMock.getQueue).toHaveBeenCalledTimes(1);
+    expect(streamPollerMock.getStreamSnapshot).toHaveBeenCalledTimes(1);
     expect(liquidsoapMock.getRequestMetadata).toHaveBeenCalledTimes(2);
     expect(result).toEqual([
       {

@@ -64,11 +64,30 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       INGEST_MAX_CONCURRENCY: ${INGEST_MAX_CONCURRENCY:-1}
       ACOUSTID_API_KEY: ${ACOUSTID_API_KEY:-}
+      MIXCLOUD_USER_URL: ${MIXCLOUD_USER_URL:-https://www.mixcloud.com/duckradio/}
+      METADATA_RECOVERY_INTERVAL_MS: ${METADATA_RECOVERY_INTERVAL_MS:-3600000}
       MUSICBRAINZ_CONTACT_URL: ${MUSICBRAINZ_CONTACT_URL:-https://github.com/your-username/duck-feed}
     volumes:
       - ./volumes/dropzone:/var/lib/duckfeed/dropzone
       - ./volumes/processing:/var/lib/duckfeed/processing
+      - ./volumes/quarantine:/var/lib/duckfeed/quarantine
       - ./volumes/library:/var/lib/duckfeed/library
+
+  metadata-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "dist/metadata-worker.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MIXCLOUD_USER_URL: ${MIXCLOUD_USER_URL:-https://www.mixcloud.com/duckradio/}
+      METADATA_RECOVERY_INTERVAL_MS: ${METADATA_RECOVERY_INTERVAL_MS:-3600000}
 
   client:
     build:
@@ -107,7 +126,9 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/conf.d-extra:/etc/nginx/conf.d-extra:ro

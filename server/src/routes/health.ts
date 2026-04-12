@@ -3,7 +3,15 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/health', async () => {
+  app.get('/health', { logLevel: 'silent' }, async () => {
+    return {
+      data: { status: 'ok' },
+      error: null,
+      meta: null,
+    };
+  });
+
+  app.get('/health/deep', { logLevel: 'silent' }, async () => {
     const checks: Record<string, { ok: boolean; error?: string }> = {
       api: { ok: true },
       database: { ok: false },

@@ -11,9 +11,12 @@ interface Config {
   LIQUIDSOAP_TELNET_PORT: number;
   ACOUSTID_API_KEY: string | null;
   MUSICBRAINZ_CONTACT_URL: string;
+  MIXCLOUD_USER_URL: string;
+  METADATA_RECOVERY_INTERVAL_MS: number;
   LIBRARY_DIR: string;
   DROPZONE_DIR: string;
   PROCESSING_DIR: string;
+  QUARANTINE_DIR: string;
   BRANDING_DIR: string;
 }
 
@@ -60,8 +63,11 @@ export const config: Config = {
     'MUSICBRAINZ_CONTACT_URL',
     'https://github.com/your-username/duck-feed',
   ),
+  MIXCLOUD_USER_URL: optional('MIXCLOUD_USER_URL', 'https://www.mixcloud.com/duckradio/'),
+  METADATA_RECOVERY_INTERVAL_MS: positiveIntEnv('METADATA_RECOVERY_INTERVAL_MS', 3_600_000),
   LIBRARY_DIR: optional('LIBRARY_DIR', '/var/lib/duckfeed/library'),
   DROPZONE_DIR: optional('DROPZONE_DIR', '/var/lib/duckfeed/dropzone'),
   PROCESSING_DIR: optional('PROCESSING_DIR', '/var/lib/duckfeed/processing'),
+  QUARANTINE_DIR: optional('QUARANTINE_DIR', '/var/lib/duckfeed/quarantine'),
   BRANDING_DIR: optional('BRANDING_DIR', '/var/lib/duckfeed/branding'),
 };

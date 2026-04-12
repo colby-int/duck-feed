@@ -7,7 +7,7 @@ const dbMock = vi.hoisted(() => ({
 }));
 
 const liquidsoapMock = vi.hoisted(() => ({
-  getCurrentRequest: vi.fn(),
+  getStreamSnapshot: vi.fn(),
 }));
 
 vi.mock('../../src/db/index.js', () => ({
@@ -18,7 +18,7 @@ vi.mock('../../src/db/index.js', () => ({
   },
 }));
 
-vi.mock('../../src/services/liquidsoap.js', () => liquidsoapMock);
+vi.mock('../../src/services/stream-poller.js', () => liquidsoapMock);
 
 describe('playback-log writer', () => {
   beforeEach(() => {
@@ -30,7 +30,7 @@ describe('playback-log writer', () => {
     dbMock.select.mockReset();
     dbMock.update.mockReset();
     dbMock.insert.mockReset();
-    liquidsoapMock.getCurrentRequest.mockReset();
+    liquidsoapMock.getStreamSnapshot.mockReset();
   });
 
   function mockEpisodeLookup(episode: { id: string } | null) {
@@ -62,9 +62,15 @@ describe('playback-log writer', () => {
   }
 
   it('does nothing when the open row already represents the current episode', async () => {
-    liquidsoapMock.getCurrentRequest.mockResolvedValue({
-      requestId: '1',
-      filePath: '/library/episode-a.mp3',
+    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: {
+        requestId: '1',
+        filePath: '/library/episode-a.mp3',
+      },
+      online: true,
+      queue: [],
+      remainingSeconds: null,
     });
 
     dbMock.select
@@ -79,9 +85,15 @@ describe('playback-log writer', () => {
   });
 
   it('inserts a new row when there is no open row and a known file is playing', async () => {
-    liquidsoapMock.getCurrentRequest.mockResolvedValue({
-      requestId: '1',
-      filePath: '/library/episode-a.mp3',
+    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: {
+        requestId: '1',
+        filePath: '/library/episode-a.mp3',
+      },
+      online: true,
+      queue: [],
+      remainingSeconds: null,
     });
 
     dbMock.select
@@ -99,9 +111,15 @@ describe('playback-log writer', () => {
   });
 
   it('closes prior open row and inserts new row on transition between episodes', async () => {
-    liquidsoapMock.getCurrentRequest.mockResolvedValue({
-      requestId: '2',
-      filePath: '/library/episode-b.mp3',
+    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: {
+        requestId: '2',
+        filePath: '/library/episode-b.mp3',
+      },
+      online: true,
+      queue: [],
+      remainingSeconds: null,
     });
 
     dbMock.select
@@ -121,9 +139,15 @@ describe('playback-log writer', () => {
   });
 
   it('closes prior open row without inserting when current file is unknown', async () => {
-    liquidsoapMock.getCurrentRequest.mockResolvedValue({
-      requestId: '3',
-      filePath: '/library/test-tone.mp3',
+    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: {
+        requestId: '3',
+        filePath: '/library/test-tone.mp3',
+      },
+      online: true,
+      queue: [],
+      remainingSeconds: null,
     });
 
     dbMock.select
@@ -141,7 +165,13 @@ describe('playback-log writer', () => {
   });
 
   it('does nothing when liquidsoap is silent and there is no open row', async () => {
-    liquidsoapMock.getCurrentRequest.mockResolvedValue(null);
+    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: null,
+      online: true,
+      queue: [],
+      remainingSeconds: null,
+    });
 
     dbMock.select.mockReturnValueOnce(mockOpenRowLookup(null));
 
@@ -153,7 +183,15 @@ describe('playback-log writer', () => {
   });
 
   it('swallows liquidsoap errors so the poller never crashes the API server', async () => {
-    liquidsoapMock.getCurrentRequest.mockRejectedValue(new Error('telnet down'));
+    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
+      checkedAt: '2026-04-12T01:00:00.000Z',
+      currentRequest: null,
+      online: false,
+      queue: [],
+      remainingSeconds: null,
+    });
+
+    dbMock.select.mockReturnValueOnce(mockOpenRowLookup(null));
 
     const { tickPlaybackLog } = await import('../../src/services/playback-log-writer.js');
     await expect(tickPlaybackLog(new Date())).resolves.toBeUndefined();

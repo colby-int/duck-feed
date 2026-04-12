@@ -20,24 +20,16 @@
 import { desc, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { episodes, playbackLog } from '../db/schema.js';
-import { getCurrentRequest } from './liquidsoap.js';
 import { logger } from '../lib/logger.js';
+import { getStreamSnapshot } from './stream-poller.js';
 
 const POLL_INTERVAL_MS = 10_000;
 
 let pollerTimer: NodeJS.Timeout | null = null;
 
 export async function tickPlaybackLog(now: Date = new Date()): Promise<void> {
-  let currentRequest;
-  try {
-    currentRequest = await getCurrentRequest();
-  } catch (err) {
-    // Liquidsoap may be temporarily unreachable; just skip this tick.
-    logger.warn({ err }, 'playback-log: getCurrentRequest failed, skipping tick');
-    return;
-  }
-
-  const filePath = currentRequest?.filePath ?? null;
+  const snapshot = await getStreamSnapshot();
+  const filePath = snapshot.currentRequest?.filePath ?? null;
 
   // Resolve the current file to an episode, if any.
   let currentEpisodeId: string | null = null;
