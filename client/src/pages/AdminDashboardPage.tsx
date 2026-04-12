@@ -54,7 +54,7 @@ export function AdminDashboardPage() {
           </div>
           <div className="bg-panel p-5 text-white">
             <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/55">now playing</div>
-            <div className="mt-2 text-2xl font-medium">
+            <div className="mt-2 break-words text-2xl font-medium [overflow-wrap:anywhere]">
               {nowPlaying?.episode ? formatEpisodeDisplayTitle(nowPlaying.episode) : 'no match'}
             </div>
             <p className="mt-2 text-sm text-white/75">
@@ -69,7 +69,7 @@ export function AdminDashboardPage() {
 
       <Panel title="Jobs" subtitle="recent">
         <div className="overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-y-2">
+          <table className="min-w-full table-fixed border-separate border-spacing-y-2">
             <thead>
               <tr className="text-left text-[0.68rem] uppercase tracking-[0.24em] text-ink/50">
                 <th className="pb-2">episode</th>
@@ -80,7 +80,7 @@ export function AdminDashboardPage() {
             <tbody>
               {jobs.map((job) => (
                 <tr key={job.id} className="bg-white shadow-[0_0_0_1px_rgba(20,20,19,0.08)]">
-                  <td className="px-4 py-3 text-sm font-medium">
+                  <td className="px-4 py-3 text-sm font-medium break-words [overflow-wrap:anywhere]">
                     {job.episodeTitle
                       ? formatEpisodeDisplayTitle({
                           title: job.episodeTitle,
@@ -89,7 +89,7 @@ export function AdminDashboardPage() {
                       : 'Pending episode'}
                   </td>
                   <td className="px-4 py-3 text-sm text-ink/70">{job.status}</td>
-                  <td className="px-4 py-3 text-xs text-ink/60">{job.sourcePath}</td>
+                  <td className="px-4 py-3 text-xs text-ink/60 break-all">{job.sourcePath}</td>
                 </tr>
               ))}
             </tbody>
