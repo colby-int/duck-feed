@@ -36,6 +36,18 @@ describe('mixcloud-validator', () => {
     expect(result).toBe(true);
   });
 
+  it('matches when dates differ (DB vs Mixcloud dates)', async () => {
+    mockApiResponse(['Heuristic | Strict Face | 08.02.2026']);
+    const result = await validateMixcloudMetadata('Heuristic | Strict Face | 11.01.2026');
+    expect(result).toBe(true);
+  });
+
+  it('matches when Mixcloud uses 2-digit year and DB uses 4-digit', async () => {
+    mockApiResponse(['Cult Aesthetics | Velodrone | 01.02.26']);
+    const result = await validateMixcloudMetadata('Cult Aesthetics | Velodrone | 01.02.2026');
+    expect(result).toBe(true);
+  });
+
   it('returns false when no match exists', async () => {
     mockApiResponse(['Home Sweet | Marley | 08.02.2026']);
     const result = await validateMixcloudMetadata('Nonexistent Show | Nobody | 01.01.2000');

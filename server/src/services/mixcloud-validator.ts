@@ -65,19 +65,41 @@ function normalise(value: string): string {
 }
 
 /**
+ * Extract the "Show | Presenter" portion from a Mixcloud title, stripping
+ * a trailing date segment if present. Mixcloud titles may have 2 or 3
+ * pipe-separated parts, and dates may use 2- or 4-digit years, so matching
+ * on the title+presenter portion is more reliable than full-string matching.
+ */
+function extractShowAndPresenter(value: string): string {
+  const parts = value.split('|').map((p) => p.trim());
+
+  // 3-part title: "Show | Presenter | Date" — check if last part looks like a date
+  if (parts.length === 3 && /^\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}$/.test(parts[2]!)) {
+    return normalise(`${parts[0]} | ${parts[1]}`);
+  }
+
+  // 2-part or anything else: use the full string
+  return normalise(value);
+}
+
+/**
  * Validate that a Mixcloud-format title exists in the Duck Radio archive.
+ *
+ * Matching is done on the "Show | Presenter" portion only, ignoring dates.
+ * Broadcast dates differ between our DB (derived from filenames) and Mixcloud
+ * (set on upload), and Mixcloud inconsistently uses 2- vs 4-digit years.
  *
  * @param mixcloudTitle  Full pipe-separated title, e.g.
  *   "Under The Persimmon Tree | Erin & Romi | 15.02.2026"
- * @returns true if an exact (normalised) match is found.
+ * @returns true if a match is found by show name + presenter.
  */
 export async function validateMixcloudMetadata(
   mixcloudTitle: string,
 ): Promise<boolean> {
   try {
     const names = await fetchCloudcastNames();
-    const target = normalise(mixcloudTitle);
-    return names.some((name) => normalise(name) === target);
+    const target = extractShowAndPresenter(mixcloudTitle);
+    return names.some((name) => extractShowAndPresenter(name) === target);
   } catch (err) {
     logger.warn({ err }, 'mixcloud-validator: validation failed');
     return false;
