@@ -1,42 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const runCommandMock = vi.hoisted(() => ({
-  runCommand: vi.fn(),
+vi.mock('../../src/lib/logger.js', () => ({
+  logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
 }));
-
-vi.mock('../../src/lib/run-command.js', () => runCommandMock);
 
 describe('mixcloud service', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.restoreAllMocks();
     process.env.DATABASE_URL = 'postgresql://duckfeed:duckfeed@127.0.0.1:65535/duckfeed';
     process.env.SESSION_SECRET = 'x'.repeat(64);
     process.env.LOG_LEVEL = 'silent';
-    runCommandMock.runCommand.mockReset();
   });
 
-  it('discovers canonical episode metadata from the Mixcloud user feed', async () => {
-    runCommandMock.runCommand
-      .mockResolvedValueOnce({
-        stdout: ['https://www.mixcloud.com/duckradio/hardcore-nerds-08022026/'].join('\n'),
-        stderr: '',
-      })
-      .mockResolvedValueOnce({
-        stdout: JSON.stringify({
-          description: 'A loud one',
-          thumbnail: 'https://images.example/hardcore-nerds.jpg',
-          title: "Hardcore Nerds | TK FM & Bad'm D | 08.02.2026",
-          webpage_url: 'https://www.mixcloud.com/duckradio/hardcore-nerds-08022026/',
-        }),
-        stderr: '',
-      });
+  it('discovers canonical episode metadata from the Mixcloud API', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            name: "Hardcore Nerds | TK FM & Bad'm D | 08.02.2026",
+            url: 'https://www.mixcloud.com/duckradio/hardcore-nerds-08022026/',
+            description: 'A loud one',
+            pictures: {
+              large: 'https://images.example/hardcore-nerds-300.jpg',
+              extra_large: 'https://images.example/hardcore-nerds-600.jpg',
+              '1024wx1024h': 'https://images.example/hardcore-nerds-1024.jpg',
+            },
+          },
+        ],
+        paging: {},
+      }),
+    });
 
     const { discoverMixcloudEpisodes } = await import('../../src/services/mixcloud.js');
-    const result = await discoverMixcloudEpisodes();
+    const result = await discoverMixcloudEpisodes('https://www.mixcloud.com/duckradio/');
 
     expect(result).toEqual([
       {
-        artworkUrl: 'https://images.example/hardcore-nerds.jpg',
+        artworkUrl: 'https://images.example/hardcore-nerds-1024.jpg',
         broadcastDate: '2026-02-08',
         description: 'A loud one',
         mixcloudUrl: 'https://www.mixcloud.com/duckradio/hardcore-nerds-08022026/',
@@ -47,68 +49,88 @@ describe('mixcloud service', () => {
     ]);
   });
 
-  it('fetches Mixcloud episode metadata without fan-out concurrency', async () => {
-    let activeFetches = 0;
-    let maxConcurrentFetches = 0;
-    const deferredResolves: Array<() => void> = [];
+  it('paginates through multiple API pages', async () => {
+    const page1 = {
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            name: 'Episode One | Presenter One | 01.02.2026',
+            url: 'https://www.mixcloud.com/duckradio/episode-one/',
+            pictures: {},
+          },
+        ],
+        paging: { next: 'https://api.mixcloud.com/duckradio/cloudcasts/?offset=1' },
+      }),
+    };
+    const page2 = {
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            name: 'Episode Two | Presenter Two | 08.02.2026',
+            url: 'https://www.mixcloud.com/duckradio/episode-two/',
+            pictures: {},
+          },
+        ],
+        paging: {},
+      }),
+    };
 
-    runCommandMock.runCommand.mockImplementation(async (_command, args: string[]) => {
-      if (args.includes('--flat-playlist')) {
-        return {
-          stdout: [
-            'https://www.mixcloud.com/duckradio/episode-one/',
-            'https://www.mixcloud.com/duckradio/episode-two/',
-          ].join('\n'),
-          stderr: '',
-        };
-      }
-
-      const url = args.at(-1);
-      if (!url) {
-        throw new Error('expected Mixcloud episode URL');
-      }
-
-      activeFetches += 1;
-      maxConcurrentFetches = Math.max(maxConcurrentFetches, activeFetches);
-
-      await new Promise<void>((resolve) => {
-        deferredResolves.push(() => {
-          activeFetches -= 1;
-          resolve();
-        });
-      });
-
-      const title =
-        url === 'https://www.mixcloud.com/duckradio/episode-one/'
-          ? 'Episode One | Presenter One | 01.02.2026'
-          : 'Episode Two | Presenter Two | 08.02.2026';
-
-      return {
-        stdout: JSON.stringify({
-          title,
-          webpage_url: url,
-        }),
-        stderr: '',
-      };
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(page1)
+      .mockResolvedValueOnce(page2);
 
     const { discoverMixcloudEpisodes } = await import('../../src/services/mixcloud.js');
-    const discoveryPromise = discoverMixcloudEpisodes();
-
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(maxConcurrentFetches).toBe(1);
-
-    deferredResolves.shift()?.();
-    await vi.waitFor(() => {
-      expect(deferredResolves).toHaveLength(1);
-    });
-    deferredResolves.shift()?.();
-
-    const result = await discoveryPromise;
+    const result = await discoverMixcloudEpisodes('https://www.mixcloud.com/duckradio/');
 
     expect(result).toHaveLength(2);
-    expect(maxConcurrentFetches).toBe(1);
+    expect(result[0]!.title).toBe('Episode One');
+    expect(result[1]!.title).toBe('Episode Two');
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetches a single episode by URL via the API', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        name: 'Pranzo | A$AP Gnocchi | 08.02.2026',
+        url: 'https://www.mixcloud.com/duckradio/pranzo-08022026/',
+        description: 'Italian vibes',
+        pictures: {
+          extra_large: 'https://images.example/pranzo.jpg',
+        },
+      }),
+    });
+
+    const { fetchMixcloudEpisode } = await import('../../src/services/mixcloud.js');
+    const result = await fetchMixcloudEpisode(
+      'https://www.mixcloud.com/duckradio/pranzo-08022026/',
+    );
+
+    expect(result).toEqual({
+      artworkUrl: 'https://images.example/pranzo.jpg',
+      broadcastDate: '2026-02-08',
+      description: 'Italian vibes',
+      mixcloudUrl: 'https://www.mixcloud.com/duckradio/pranzo-08022026/',
+      presenter: 'A$AP Gnocchi',
+      sourceTitle: 'Pranzo | A$AP Gnocchi | 08.02.2026',
+      title: 'Pranzo',
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.mixcloud.com/duckradio/pranzo-08022026/',
+    );
+  });
+
+  it('returns null for a single episode when API fails', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+
+    const { fetchMixcloudEpisode } = await import('../../src/services/mixcloud.js');
+    const result = await fetchMixcloudEpisode(
+      'https://www.mixcloud.com/duckradio/nonexistent/',
+    );
+
+    expect(result).toBeNull();
   });
 });
