@@ -3,7 +3,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import { eq } from 'drizzle-orm';
+import { eq, max } from 'drizzle-orm';
 
 import { config } from '../config.js';
 import { db } from '../db/index.js';
@@ -35,6 +35,16 @@ export function getDuckhausEpisodeStatus(entry: {
 
 export async function syncDuckhausCatalog(): Promise<number> {
   const entries = await fetchDuckhausCatalog();
+  if (entries.length === 0) return 0;
+
+  // New episodes join the current rotation cycle so they don't cause
+  // catch-up loops by sitting at cycle 0 while everything else is higher.
+  const [cycleRow] = await db
+    .select({ maxCycle: max(episodes.rotationCycle) })
+    .from(episodes)
+    .where(eq(episodes.status, 'ready'));
+  const currentCycle = cycleRow?.maxCycle ?? 0;
+
   let synced = 0;
 
   for (const entry of entries) {
@@ -53,6 +63,7 @@ export async function syncDuckhausCatalog(): Promise<number> {
         fileHash: entry.fileHash,
         originalFilename: `${entry.slug}.mp3`,
         status: getDuckhausEpisodeStatus(entry),
+        rotationCycle: currentCycle,
       })
       .onConflictDoUpdate({
         target: episodes.slug,

@@ -43,6 +43,13 @@
       "when": 1775991528450,
       "tag": "0005_mighty_bucky",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776121908198,
+      "tag": "0006_dusty_expediter",
+      "breakpoints": true
     }
   ]
 }

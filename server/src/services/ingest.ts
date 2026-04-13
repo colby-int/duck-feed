@@ -15,7 +15,7 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { inArray, eq, and } from 'drizzle-orm';
+import { inArray, eq, and, max } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { episodes, ingestJobs } from '../db/schema.js';
 import type { Episode, IngestJob } from '../db/schema.js';
@@ -295,6 +295,13 @@ async function runPipeline(episode: Episode, job: IngestJob): Promise<IngestOutc
   const fileHash = await sha256File(libraryPath);
 
   // Step 5: finalise episode + job.
+  // New episodes join the current rotation cycle so they enter the unplayed
+  // pool rather than sitting at cycle 0 and replaying until they catch up.
+  const [cycleRow] = await db
+    .select({ maxCycle: max(episodes.rotationCycle) })
+    .from(episodes)
+    .where(eq(episodes.status, 'ready'));
+
   const [updatedEpisode] = await db
     .update(episodes)
     .set({
@@ -303,6 +310,7 @@ async function runPipeline(episode: Episode, job: IngestJob): Promise<IngestOutc
       loudnessLufs: measuredLufs,
       fileHash,
       status: 'ready',
+      rotationCycle: cycleRow?.maxCycle ?? 0,
       updatedAt: new Date(),
     })
     .where(eq(episodes.id, episode.id))

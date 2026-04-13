@@ -62,6 +62,7 @@ episodes/
 !/nginx/conf.d-extra/.gitkeep
 !/nginx/conf.d-extra/*.example
 /package-lock.json
+/scripts/logs.sh
 /scripts/tests/ingest.test.mjs
 /scripts/tests/mixcloud.test.mjs
 /docs/features

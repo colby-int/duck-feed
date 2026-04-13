@@ -27,6 +27,7 @@ export const episodes = pgTable('episodes', {
   // status values: pending | processing | ready | error
   autoQueuedAt: timestamp('auto_queued_at', { withTimezone: true }),
   autoQueueRequestId: text('auto_queue_request_id'),
+  rotationCycle: integer('rotation_cycle').notNull().default(0),
   loudnessLufs: real('loudness_lufs'),
   fileHash: text('file_hash'), // SHA-256 of normalised file
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

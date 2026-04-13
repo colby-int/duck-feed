@@ -1,7 +1,16 @@
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, min, sql } from 'drizzle-orm';
 
 import { db } from '../db/index.js';
 import { episodes, playbackLog, rotationQueueEntries } from '../db/schema.js';
+
+/** Fisher-Yates (Knuth) in-place shuffle. Mutates and returns the array. */
+function fisherYatesShuffle<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
 
 export interface RotationQueueViewEntry {
   id: string;
@@ -44,7 +53,16 @@ export async function listRotationQueue(): Promise<RotationQueueViewEntry[]> {
 }
 
 export async function shuffleRotationQueue(count: number): Promise<RotationQueueViewEntry[]> {
-  const readyEpisodes = await db
+  // Find the minimum rotation cycle among ready episodes — these haven't
+  // played yet in the current cycle and are the only eligible candidates.
+  const [cycleRow] = await db
+    .select({ minCycle: min(episodes.rotationCycle) })
+    .from(episodes)
+    .where(eq(episodes.status, 'ready'));
+
+  const minCycle = cycleRow?.minCycle ?? 0;
+
+  const candidateEpisodes = await db
     .select({
       id: episodes.id,
       title: episodes.title,
@@ -53,15 +71,18 @@ export async function shuffleRotationQueue(count: number): Promise<RotationQueue
       broadcastDate: episodes.broadcastDate,
     })
     .from(episodes)
-    .where(eq(episodes.status, 'ready'));
+    .where(and(eq(episodes.status, 'ready'), eq(episodes.rotationCycle, minCycle)));
 
-  const shuffled = [...readyEpisodes]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, Math.max(0, count));
+  const shuffled = fisherYatesShuffle([...candidateEpisodes]).slice(
+    0,
+    Math.max(0, count),
+  );
 
   await db.delete(rotationQueueEntries);
 
   if (shuffled.length > 0) {
+    const queuedIds = shuffled.map((e) => e.id);
+
     await db.insert(rotationQueueEntries).values(
       shuffled.map((episode, index) => ({
         episodeId: episode.id,
@@ -69,6 +90,16 @@ export async function shuffleRotationQueue(count: number): Promise<RotationQueue
         source: 'auto',
       })),
     );
+
+    // Mark these episodes as played in this cycle so they won't be picked
+    // again until every other episode has also been picked.
+    await db
+      .update(episodes)
+      .set({
+        rotationCycle: sql`${episodes.rotationCycle} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(inArray(episodes.id, queuedIds));
   }
 
   return await listRotationQueue();
