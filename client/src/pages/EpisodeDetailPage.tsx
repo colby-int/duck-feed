@@ -10,6 +10,7 @@ import {
   type EpisodeDetail,
   type TrackRecord,
 } from '../api/client';
+import { EpisodeDisplayTitleText } from '../components/episode-display-title-text';
 import { Panel } from '../components/Panel';
 import { formatEpisodeDisplayTitle } from '../lib/episode-display-title';
 
@@ -288,7 +289,18 @@ export function EpisodeDetailPage() {
         </button>
       </div>
 
-      <Panel title={formatEpisodeDisplayTitle(detail)} subtitle="edit">
+      <Panel
+        title={
+          <EpisodeDisplayTitleText
+            className="block max-w-full [overflow-wrap:anywhere]"
+            episode={detail}
+            primaryClassName="block"
+            secondaryClassName="mt-1 block text-[1.15rem] leading-tight text-ink/72"
+            singleLineClassName="block"
+          />
+        }
+        subtitle="edit"
+      >
         <form
           className="grid gap-4 md:grid-cols-2"
           onSubmit={(event) => void saveEpisode(event)}

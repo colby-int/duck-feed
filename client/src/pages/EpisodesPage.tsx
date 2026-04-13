@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { requestData, type EpisodeSummary } from '../api/client';
+import { EpisodeDisplayTitleText } from '../components/episode-display-title-text';
 import { Panel } from '../components/Panel';
-import { formatEpisodeDisplayTitle } from '../lib/episode-display-title';
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -47,9 +47,13 @@ export function EpisodesPage() {
               <div className="text-[0.68rem] uppercase tracking-[0.24em] text-ink/65">
                 {episode.status ?? 'pending'}
               </div>
-              <div className="mt-1 text-lg font-medium leading-snug">
-                {formatEpisodeDisplayTitle(episode)}
-              </div>
+              <EpisodeDisplayTitleText
+                className="mt-1 block [overflow-wrap:anywhere]"
+                episode={episode}
+                primaryClassName="block text-lg font-medium leading-snug"
+                secondaryClassName="mt-1 block text-sm leading-snug text-ink/72"
+                singleLineClassName="block text-lg font-medium leading-snug"
+              />
               <div className="mt-1 truncate text-sm text-ink/70">{episode.slug}</div>
               {episode.broadcastDate ? (
                 <div className="mt-2 text-[0.65rem] uppercase tracking-[0.18em] text-ink/55">

@@ -6,6 +6,7 @@ import {
   type RotationQueueEntry,
   type StreamApiKeyRecord,
 } from '../api/client';
+import { EpisodeDisplayTitleText } from '../components/episode-display-title-text';
 import { Panel } from '../components/Panel';
 import { formatEpisodeDisplayTitle } from '../lib/episode-display-title';
 
@@ -217,7 +218,14 @@ export function StreamPage() {
                 <div className="text-[0.68rem] uppercase tracking-[0.18em] text-ink/55">
                   slot {entry.position}
                 </div>
-                <div className="text-sm font-medium text-ink">{entry.episode.title}</div>
+                <EpisodeDisplayTitleText
+                  className="block [overflow-wrap:anywhere]"
+                  episode={entry.episode}
+                  primaryClassName="block text-sm font-medium leading-snug text-ink"
+                  secondaryClassName="mt-1 block text-xs leading-snug text-ink/72"
+                  showPresenter={false}
+                  singleLineClassName="block text-sm font-medium leading-snug text-ink"
+                />
                 <div className="text-sm text-ink/70">
                   {entry.episode.presenter ?? 'Unknown presenter'}
                 </div>

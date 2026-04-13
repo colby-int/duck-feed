@@ -24,6 +24,7 @@ describe('App', () => {
   });
 
   beforeEach(() => {
+    document.documentElement.style.cssText = '';
     document.head.innerHTML = `
       <link rel="icon" sizes="32x32" href="/favicon-32x32.png" />
       <link rel="icon" sizes="16x16" href="/favicon-16x16.png" />
@@ -122,6 +123,8 @@ describe('App', () => {
 
     await screen.findByRole('heading', { name: /duckfeed radio/i });
 
-    expect(document.documentElement.style.getPropertyValue('--site-color-brand-text')).toBe('248 244 232');
+    await waitFor(() => {
+      expect(document.documentElement.style.getPropertyValue('--site-color-brand-text')).toBe('248 244 232');
+    });
   });
 });

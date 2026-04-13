@@ -42,7 +42,7 @@ describe('AdminDashboardPage', () => {
             presenter: 'Presenters With Extremely Long Compound Names That Need To Wrap Cleanly',
             slug: 'episode-1',
             title:
-              'A Very Long Now Playing Title That Previously Escaped The Dashboard Container Instead Of Wrapping',
+              'A Very Long Now Playing Title That Previously Escaped The Dashboard Container Instead Of Wrapping - Valentines Day Special',
           },
           startedAt: '2026-04-12T00:00:00.000Z',
           track: null,
@@ -58,7 +58,7 @@ describe('AdminDashboardPage', () => {
             episodePresenter:
               'The Incredibly Long Presenter Name That Used To Blow Out The Recent Jobs Table',
             episodeTitle:
-              'A Very Long Recent Job Episode Title That Needs Explicit Wrapping In The Dashboard Table',
+              'A Very Long Recent Job Episode Title That Needs Explicit Wrapping In The Dashboard Table - Valentines Day Special',
             errorMessage: null,
             id: 'job-1',
             sourcePath:
@@ -73,18 +73,23 @@ describe('AdminDashboardPage', () => {
     });
   });
 
-  it('adds explicit wrapping classes for long now-playing and recent job metadata', async () => {
+  it('renders long separated titles as split title lines in dashboard cards and rows', async () => {
     render(<AdminDashboardPage />);
 
-    const nowPlayingTitle = await screen.findByText(
-      /A Very Long Now Playing Title That Previously Escaped The Dashboard Container/i,
+    const nowPlayingPrimary = await screen.findByText(
+      /A Very Long Now Playing Title That Previously Escaped The Dashboard Container Instead Of Wrapping/i,
     );
-    expect(nowPlayingTitle).toHaveClass('break-words');
+    expect(nowPlayingPrimary).toBeInTheDocument();
+    expect(
+      screen.getByText(/Valentines Day Special \| Presenters With Extremely Long Compound Names That Need To Wrap Cleanly/i),
+    ).toBeInTheDocument();
 
-    const jobTitleCell = screen
-      .getByText(/A Very Long Recent Job Episode Title That Needs Explicit Wrapping/i)
-      .closest('td');
-    expect(jobTitleCell).toHaveClass('break-words');
+    expect(
+      screen.getByText(/A Very Long Recent Job Episode Title That Needs Explicit Wrapping In The Dashboard Table/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Valentines Day Special \| The Incredibly Long Presenter Name That Used To Blow Out The Recent Jobs Table/i),
+    ).toBeInTheDocument();
 
     const sourceCell = screen
       .getByText(/file-name-that-should-never-force-the-table-wider-than-its-panel\.wav/i)

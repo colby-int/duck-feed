@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { requestData, type IngestJobRecord, type NowPlaying, type StreamStatus } from '../api/client';
+import { EpisodeDisplayTitleText } from '../components/episode-display-title-text';
 import { Panel } from '../components/Panel';
-import { formatEpisodeDisplayTitle } from '../lib/episode-display-title';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -54,8 +54,18 @@ export function AdminDashboardPage() {
           </div>
           <div className="bg-panel p-5 text-white">
             <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/55">now playing</div>
-            <div className="mt-2 break-words text-2xl font-medium [overflow-wrap:anywhere]">
-              {nowPlaying?.episode ? formatEpisodeDisplayTitle(nowPlaying.episode) : 'no match'}
+            <div className="mt-2 break-words [overflow-wrap:anywhere]">
+              {nowPlaying?.episode ? (
+                <EpisodeDisplayTitleText
+                  className="block"
+                  episode={nowPlaying.episode}
+                  primaryClassName="block text-2xl font-medium leading-tight text-white"
+                  secondaryClassName="mt-1 block text-sm leading-snug text-white/78"
+                  singleLineClassName="block text-2xl font-medium leading-tight text-white"
+                />
+              ) : (
+                <span className="block text-2xl font-medium leading-tight text-white">no match</span>
+              )}
             </div>
             <p className="mt-2 text-sm text-white/75">
               {nowPlaying?.track
@@ -82,10 +92,18 @@ export function AdminDashboardPage() {
                 <tr key={job.id} className="bg-white shadow-[0_0_0_1px_rgba(20,20,19,0.08)]">
                   <td className="px-4 py-3 text-sm font-medium break-words [overflow-wrap:anywhere]">
                     {job.episodeTitle
-                      ? formatEpisodeDisplayTitle({
-                          title: job.episodeTitle,
-                          presenter: job.episodePresenter,
-                        })
+                      ? (
+                          <EpisodeDisplayTitleText
+                            className="block"
+                            episode={{
+                              title: job.episodeTitle,
+                              presenter: job.episodePresenter,
+                            }}
+                            primaryClassName="block text-sm font-medium leading-snug text-ink"
+                            secondaryClassName="mt-1 block text-xs leading-snug text-ink/72"
+                            singleLineClassName="block text-sm font-medium leading-snug text-ink"
+                          />
+                        )
                       : 'Pending episode'}
                   </td>
                   <td className="px-4 py-3 text-sm text-ink/70">{job.status}</td>

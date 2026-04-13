@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { requestData, type IngestJobRecord, uploadEpisodeWithProgress } from '../api/client';
+import { EpisodeDisplayTitleText } from '../components/episode-display-title-text';
 import { Panel } from '../components/Panel';
-import { formatEpisodeDisplayTitle } from '../lib/episode-display-title';
 
 const POLL_INTERVAL_MS = 5_000;
 const AUDIO_FILE_PATTERN = /\.(aac|aif|aiff|alac|flac|m4a|mp3|ogg|opus|wav)$/i;
@@ -378,12 +378,20 @@ export function IngestPage() {
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="text-[0.68rem] uppercase tracking-[0.24em] text-ink/50">{job.status}</div>
-                  <div className="mt-1 text-lg font-medium">
+                  <div className="mt-1 [overflow-wrap:anywhere]">
                     {job.episodeTitle
-                      ? formatEpisodeDisplayTitle({
-                          title: job.episodeTitle,
-                          presenter: job.episodePresenter,
-                        })
+                      ? (
+                          <EpisodeDisplayTitleText
+                            className="block"
+                            episode={{
+                              title: job.episodeTitle,
+                              presenter: job.episodePresenter,
+                            }}
+                            primaryClassName="block text-lg font-medium leading-snug text-ink"
+                            secondaryClassName="mt-1 block text-sm leading-snug text-ink/72"
+                            singleLineClassName="block text-lg font-medium leading-snug text-ink"
+                          />
+                        )
                       : 'Pending episode record'}
                   </div>
                 </div>

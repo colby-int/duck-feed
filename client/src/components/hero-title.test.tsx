@@ -128,6 +128,38 @@ describe('HeroTitle', () => {
     });
   });
 
+  it('renders long separated titles as a primary hero line plus a smaller subtitle line', () => {
+    layoutHeroTitleMock.mockReturnValueOnce({
+      height: 74,
+      lineCount: 1,
+      lines: [
+        {
+          end: { graphemeIndex: 40, segmentIndex: 0 },
+          start: { graphemeIndex: 0, segmentIndex: 0 },
+          text: 'Duck Feed Late Night Archive Transmission',
+          width: 412,
+        },
+      ],
+    });
+
+    render(
+      <HeroTitle
+        motion={createMotion()}
+        title="Duck Feed Late Night Archive Transmission - Valentines Day Special"
+      />,
+    );
+
+    expect(layoutHeroTitleMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'Duck Feed Late Night Archive Transmission',
+      }),
+    );
+    expect(screen.getByTestId('hero-title-primary')).toHaveTextContent(
+      'Duck Feed Late Night Archive Transmission',
+    );
+    expect(screen.getByTestId('hero-title-secondary')).toHaveTextContent('Valentines Day Special');
+  });
+
   it('keeps the title on one line even when the layout engine reports wrapping', () => {
     render(<HeroTitle motion={createMotion()} title="duckfeed Forever" />);
 

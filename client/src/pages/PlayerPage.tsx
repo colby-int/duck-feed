@@ -7,10 +7,10 @@ import {
   type StreamStatus,
 } from '../api/client';
 import { HeroTitle } from '../components/hero-title';
+import { EpisodeDisplayTitleText } from '../components/episode-display-title-text';
 import { PublicPlayerControl } from '../components/public-player-control';
 import { useSiteAppearance } from '../hooks/use-site-appearance';
 import { useAudioMotion } from '../hooks/use-audio-motion';
-import { formatEpisodeDisplayTitle } from '../lib/episode-display-title';
 
 const DISPLAY_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
@@ -157,6 +157,7 @@ export function PlayerPage() {
 
   const fallbackEpisode = episodes[0] ?? null;
   const currentEpisode = nowPlaying?.episode ?? null;
+  const displayedEpisodeId = currentEpisode?.id ?? fallbackEpisode?.id ?? null;
   const heroTitle = currentEpisode?.title ?? fallbackEpisode?.title ?? 'duckfeed';
   const heroPresenter = currentEpisode?.presenter ?? fallbackEpisode?.presenter ?? null;
   const heroArtworkUrl =
@@ -164,8 +165,9 @@ export function PlayerPage() {
   const heroMixcloudUrl =
     currentEpisode != null ? currentEpisode.mixcloudUrl ?? null : fallbackEpisode?.mixcloudUrl ?? null;
   const heroDate = formatBroadcastDate(currentEpisode?.broadcastDate ?? fallbackEpisode?.broadcastDate) ?? 'Live archive stream';
-  const upcomingEpisodes = episodes.filter((episode) => episode.id !== currentEpisode?.id).slice(0, 6);
+  const upcomingEpisodes = episodes.filter((episode) => episode.id !== displayedEpisodeId).slice(0, 6);
   const nextUpcomingEpisode = upcomingEpisodes[0] ?? null;
+  const queuedEpisodes = upcomingEpisodes.slice(1);
   const nextUpcomingDate = formatBroadcastDate(nextUpcomingEpisode?.broadcastDate);
   const isStreamLive = streamStatus?.online === true;
   const liveBadgeLabel = streamStatus == null ? 'checking' : isStreamLive ? 'live' : 'offline';
@@ -286,9 +288,13 @@ export function PlayerPage() {
                       </div>
                       {nextUpcomingEpisode ? (
                         <>
-                          <div className="mt-1.5 overflow-hidden whitespace-nowrap text-sm font-medium text-white sm:text-base">
-                            {formatEpisodeDisplayTitle(nextUpcomingEpisode)}
-                          </div>
+                          <EpisodeDisplayTitleText
+                            className="mt-1.5 block min-w-0 [overflow-wrap:anywhere]"
+                            episode={nextUpcomingEpisode}
+                            primaryClassName="block text-sm font-medium leading-tight text-white sm:text-base"
+                            secondaryClassName="mt-0.5 block text-[0.72rem] leading-snug text-white/70 sm:text-[0.82rem]"
+                            singleLineClassName="block text-sm font-medium leading-tight text-white sm:text-base"
+                          />
                           {nextUpcomingDate ? (
                             <div className="mt-0.5 text-[0.7rem] text-white/55 sm:text-xs">
                               {nextUpcomingDate}
@@ -323,11 +329,11 @@ export function PlayerPage() {
                 </summary>
 
                 <div className="bg-panel px-2 pb-2 sm:px-3 sm:pb-3">
-                  {upcomingEpisodes.length === 0 ? (
+                  {queuedEpisodes.length === 0 ? (
                     <div className="px-2 py-3 text-sm text-white/60">No additional episodes are queued in rotation right now.</div>
                   ) : (
                     <div className="space-y-1">
-                      {upcomingEpisodes.map((episode) => (
+                      {queuedEpisodes.map((episode) => (
                         <article
                           key={episode.id}
                           className="grid items-center gap-3 bg-white/[0.04] px-3 py-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-4"
@@ -336,9 +342,13 @@ export function PlayerPage() {
                             <div className="text-[0.82rem] text-white/55 sm:text-sm">
                               {formatBroadcastDate(episode.broadcastDate) ?? episode.slug}
                             </div>
-                            <div className="mt-1 text-sm font-medium leading-tight text-white sm:text-base">
-                              {formatEpisodeDisplayTitle(episode)}
-                            </div>
+                            <EpisodeDisplayTitleText
+                              className="mt-1 block [overflow-wrap:anywhere]"
+                              episode={episode}
+                              primaryClassName="block text-sm font-medium leading-tight text-white sm:text-base"
+                              secondaryClassName="mt-0.5 block text-[0.76rem] leading-snug text-white/70 sm:text-[0.84rem]"
+                              singleLineClassName="block text-sm font-medium leading-tight text-white sm:text-base"
+                            />
                           </div>
                           {episode.mixcloudUrl ? (
                             <a

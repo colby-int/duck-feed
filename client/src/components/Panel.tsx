@@ -6,7 +6,7 @@ export function Panel({
   children,
   action,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   children: ReactNode;
   action?: ReactNode;
@@ -19,7 +19,7 @@ export function Panel({
             {subtitle ? (
               <div className="text-[0.68rem] uppercase tracking-[0.26em] text-cobalt/90">{subtitle}</div>
             ) : null}
-            <h2 className="mt-2 text-[1.85rem] font-medium leading-none text-ink">{title}</h2>
+            <h2 className="mt-2 text-[1.85rem] font-medium leading-tight text-ink">{title}</h2>
           </div>
           {action}
         </div>

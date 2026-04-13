@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../api/client';
 import {
@@ -152,8 +152,68 @@ describe('PlayerPage', () => {
     expect(summary).toHaveTextContent('Night Drive');
     expect(summary).toHaveTextContent('October 1, 2025');
 
+    (accordion as HTMLDetailsElement).open = true;
+    fireEvent(accordion, new Event('toggle'));
+
+    const queueBody = accordion.querySelector('summary + div');
+    expect(queueBody).not.toBeNull();
+    expect(within(queueBody as HTMLElement).queryByText('Night Drive')).not.toBeInTheDocument();
+    expect(within(queueBody as HTMLElement).getByText(/No additional episodes are queued in rotation right now./i)).toBeInTheDocument();
+
     expect(screen.queryByText(/archive/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/now playing/i)).not.toBeInTheDocument();
+  });
+
+  it('renders long separated next-up titles as split lines instead of one shrinking nowrap row', async () => {
+    requestDataMock.mockImplementation(async (path) => {
+      if (path === '/api/episodes?limit=12') {
+        return [
+          archiveFixture[0],
+          {
+            ...archiveFixture[1],
+            presenter: 'DJ Reservoir',
+            title: 'Duck Feed Late Night Archive Transmission - Valentines Day Special',
+          },
+        ];
+      }
+
+      if (path === '/api/stream/status') {
+        return {
+          checkedAt: '2026-04-08T00:00:00.000Z',
+          librarySize: 2,
+          online: true,
+          queueLength: 2,
+          streamUrl: '/stream',
+        };
+      }
+
+      if (path === '/api/stream/now-playing') {
+        return {
+          elapsedSeconds: 120,
+          episode: {
+            artworkUrl: 'https://cdn.example.com/test-pattern.jpg',
+            broadcastDate: '2025-09-08',
+            id: 'episode-1',
+            mixcloudUrl: 'https://www.mixcloud.com/example-station/test-pattern/',
+            presenter: 'Wellness Centre',
+            slug: 'test-pattern',
+            title: 'Test Pattern',
+          },
+          startedAt: '2026-04-08T00:00:00.000Z',
+          track: null,
+        } satisfies api.NowPlaying;
+      }
+
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    renderPlayerPage();
+
+    await screen.findByRole('img', { name: /artwork for test pattern/i });
+
+    expect(screen.getByTestId('up-next-accordion')).toBeInTheDocument();
+    expect(screen.getByText('Duck Feed Late Night Archive Transmission')).toBeInTheDocument();
+    expect(screen.getByText('Valentines Day Special | DJ Reservoir')).toBeInTheDocument();
   });
 
   it('falls back to the latest archive episode metadata when no now-playing episode is available', async () => {
@@ -192,6 +252,12 @@ describe('PlayerPage', () => {
       'href',
       'https://www.mixcloud.com/example-station/test-pattern/',
     );
+
+    const accordion = screen.getByTestId('up-next-accordion');
+    const summary = accordion.querySelector('summary');
+    expect(summary).not.toBeNull();
+    expect(summary).toHaveTextContent('Night Drive');
+    expect(summary).not.toHaveTextContent('Test Pattern');
   });
 
   it('does not borrow artwork from a different archive episode when now-playing artwork is missing', async () => {
