@@ -188,7 +188,7 @@ export async function getRequestMetadata(requestId: string): Promise<LiquidsoapC
 }
 
 export async function getCurrentRequest(): Promise<LiquidsoapCurrentRequest | null> {
-  const requestIds = (await sendCommand('request.all')).flatMap((line) =>
+  const requestIds = (await sendCommand('request.on_air')).flatMap((line) =>
     line.split(/\s+/).filter(Boolean),
   );
   const requestId = requestIds[0];
@@ -214,7 +214,7 @@ export async function getRemainingSeconds(): Promise<number | null> {
 
 export async function pollLiquidsoapState(now = new Date()): Promise<LiquidsoapStreamState> {
   return await withTelnetSession(async (send) => {
-    const requestIds = (await send('request.all')).flatMap((line) =>
+    const requestIds = (await send('request.on_air')).flatMap((line) =>
       line.split(/\s+/).filter(Boolean),
     );
     const requestId = requestIds[0] ?? null;
