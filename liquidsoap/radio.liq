@@ -23,11 +23,11 @@ main = fallback(
   [queue, library]
 )
 
-# Crossfade between episodes
-radio = crossfade(duration=3.0, main)
+# Crossfade disabled after it produced a stable harmonic buzz on-air in prod.
+radio = main
 
 # Guarantee an infallible source for output even when queue + library are
-# empty. `mksafe` must wrap the crossfaded source, not its input.
+# empty.
 radio = mksafe(id="radio", radio)
 
 # Output to Icecast

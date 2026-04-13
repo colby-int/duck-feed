@@ -15,7 +15,7 @@ import {
   persistFingerprintMatches,
   FingerprintingDisabledError,
 } from '../../services/fingerprint.js';
-import { reconcileMetadata, type ReconciledMetadata } from '../../services/metadata-reconciler.js';
+import { reconcileMetadata } from '../../services/metadata-reconciler.js';
 import { validateMixcloudMetadata } from '../../services/mixcloud-validator.js';
 
 const EPISODE_STATUS = ['pending', 'processing', 'ready', 'error'] as const;

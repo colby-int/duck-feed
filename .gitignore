@@ -60,8 +60,8 @@ episodes/
 /mixcloud
 /nginx/conf.d-extra/*
 !/nginx/conf.d-extra/.gitkeep
+!/nginx/conf.d-extra/*.example
 /package-lock.json
 /scripts/tests/ingest.test.mjs
 /scripts/tests/mixcloud.test.mjs
 /docs/features
-/scripts/deploy.sh

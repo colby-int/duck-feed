@@ -1,6 +1,7 @@
 .PHONY: dev dev-server dev-client stop logs logs-api logs-worker \
        db-migrate db-reset db-seed db-studio verify-prod-invariants \
        stream-api-key-list stream-api-key-create stream-api-key-revoke \
+       stream-check stream-check-quick link-check \
        build deploy test test-watch lint lint-fix typecheck \
        backup restore seed-admin ingest seed-test-audio
 
@@ -91,6 +92,15 @@ ifndef ID
 	$(error ID is required. Usage: make stream-api-key-revoke ID=<uuid>)
 endif
 	docker compose exec -T server node dist/cli/manage-stream-api-keys.js revoke "$(ID)"
+
+stream-check: ## Deep public stream validation with tone detection and spectrogram capture
+	node scripts/check-public-stream.mjs
+
+stream-check-quick: ## Fast public stream validation for deploy smoke checks
+	node scripts/check-public-stream.mjs --quick
+
+link-check: ## Validate tracked Markdown links and embedded assets
+	node scripts/check-markdown-links.mjs
 
 build: ## Build all Docker images
 	docker compose $(PROD_COMPOSE_FILES) build
