@@ -19,29 +19,21 @@
 
 import { desc, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { episodes, playbackLog } from '../db/schema.js';
+import { playbackLog } from '../db/schema.js';
 import { logger } from '../lib/logger.js';
 import { fetchCurrentListenerCount } from './icecast.js';
-import { getStreamSnapshot } from './stream-poller.js';
+import { resolveLiveCurrentAudio } from './live-current-audio.js';
 
 const POLL_INTERVAL_MS = 10_000;
 
 let pollerTimer: NodeJS.Timeout | null = null;
+let lastResolutionAlertKey: string | null = null;
 
 export async function tickPlaybackLog(now: Date = new Date()): Promise<void> {
-  const snapshot = await getStreamSnapshot();
-  const filePath = snapshot.currentRequest?.filePath ?? null;
-
-  // Resolve the current file to an episode, if any.
-  let currentEpisodeId: string | null = null;
-  if (filePath) {
-    const [ep] = await db
-      .select({ id: episodes.id })
-      .from(episodes)
-      .where(eq(episodes.filePath, filePath))
-      .limit(1);
-    currentEpisodeId = ep?.id ?? null;
-  }
+  const liveCurrentAudio = await resolveLiveCurrentAudio(now);
+  const filePath = liveCurrentAudio.snapshot.currentRequest?.filePath ?? null;
+  const resolution = liveCurrentAudio.resolution;
+  const currentEpisodeId = resolution.matchedEpisode?.id ?? null;
 
   // Find the latest open playback_log row.
   const [openRow] = await db
@@ -56,6 +48,8 @@ export async function tickPlaybackLog(now: Date = new Date()): Promise<void> {
     .where(isNull(playbackLog.endedAt))
     .orderBy(desc(playbackLog.startedAt))
     .limit(1);
+
+  logResolutionAlert(resolution.alert);
 
   // No transition if the open row already matches the current episode.
   if (openRow && openRow.episodeId === currentEpisodeId) {
@@ -92,6 +86,8 @@ export async function tickPlaybackLog(now: Date = new Date()): Promise<void> {
       previousEpisodeId: openRow?.episodeId ?? null,
       currentEpisodeId,
       currentFilePath: filePath,
+      resolutionSource: resolution.resolutionSource,
+      selfHealed: liveCurrentAudio.selfHealed,
     },
     'playback-log: transition recorded',
   );
@@ -126,4 +122,35 @@ export function stopPlaybackLogWriter(): void {
     clearInterval(pollerTimer);
     pollerTimer = null;
   }
+
+  lastResolutionAlertKey = null;
+}
+
+function logResolutionAlert(
+  alert:
+    | {
+        details: Record<string, unknown>;
+        key: string;
+        kind: 'fallback_resolved' | 'metadata_mismatch' | 'synthetic_only';
+      }
+    | null,
+): void {
+  if (!alert) {
+    lastResolutionAlertKey = null;
+    return;
+  }
+
+  if (alert.key === lastResolutionAlertKey) {
+    return;
+  }
+
+  lastResolutionAlertKey = alert.key;
+  logger.warn(
+    {
+      alertKey: alert.key,
+      alertKind: alert.kind,
+      ...alert.details,
+    },
+    'playback-log: current-audio resolution alert',
+  );
 }

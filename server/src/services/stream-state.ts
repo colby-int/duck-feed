@@ -2,6 +2,7 @@ import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { episodes, playbackLog, tracks } from '../db/schema.js';
 import { getRequestMetadata } from './liquidsoap.js';
+import { resolveLiveCurrentAudio } from './live-current-audio.js';
 import { getStreamSnapshot } from './stream-poller.js';
 
 export interface StreamStatus {
@@ -164,47 +165,62 @@ async function resolveQueueEntry(rawEntry: string): Promise<StreamQueueEntry> {
   };
 }
 
-async function getLiquidsoapNowPlaying(now: Date): Promise<NowPlaying | null> {
-  const snapshot = await getStreamSnapshot();
-  const currentRequest = snapshot.currentRequest;
-  const remainingSeconds = snapshot.remainingSeconds;
-
-  if (!currentRequest?.filePath) {
-    return null;
+async function getLiquidsoapNowPlaying(
+  now: Date,
+  currentPlayback:
+    | {
+        startedAt: Date;
+        episodeId: string;
+      }
+    | null,
+): Promise<{ nowPlaying: NowPlaying | null; online: boolean }> {
+  const liveCurrentAudio = await resolveLiveCurrentAudio(now);
+  const snapshot = liveCurrentAudio.snapshot;
+  if (!snapshot.online) {
+    return { nowPlaying: null, online: false };
   }
 
-  const [currentEpisode] = await db
-    .select({
-      id: episodes.id,
-      title: episodes.title,
-      presenter: episodes.presenter,
-      slug: episodes.slug,
-      broadcastDate: episodes.broadcastDate,
-      mixcloudUrl: episodes.mixcloudUrl,
-      artworkUrl: episodes.artworkUrl,
-      durationSeconds: episodes.durationSeconds,
-    })
-    .from(episodes)
-    .where(and(eq(episodes.filePath, currentRequest.filePath), eq(episodes.status, 'ready')))
-    .limit(1);
+  const resolution = liveCurrentAudio.resolution;
 
-  if (!currentEpisode) {
-    return null;
+  if (!resolution.displayEpisode) {
+    return { nowPlaying: null, online: true };
   }
 
-  const elapsedSeconds =
-    currentEpisode.durationSeconds != null && remainingSeconds != null
-      ? Math.max(0, Math.floor(currentEpisode.durationSeconds - remainingSeconds))
-      : 0;
-  const episodeTracks = await getEpisodeTracks(currentEpisode.id);
-  const currentTrack = getCurrentTrack(episodeTracks, elapsedSeconds);
+  let elapsedSeconds = 0;
+  let startedAt = now.toISOString();
+  let currentTrack: ReturnType<typeof getCurrentTrack> = null;
 
-  return buildNowPlaying(
-    currentEpisode,
-    currentTrack,
-    elapsedSeconds,
-    new Date(now.getTime() - elapsedSeconds * 1000).toISOString(),
-  );
+  if (resolution.matchedEpisode) {
+    if (currentPlayback && currentPlayback.episodeId === resolution.matchedEpisode.id) {
+      elapsedSeconds = Math.max(
+        0,
+        Math.floor((now.getTime() - currentPlayback.startedAt.getTime()) / 1000),
+      );
+      startedAt = currentPlayback.startedAt.toISOString();
+    } else if (
+      resolution.matchedEpisode.durationSeconds != null &&
+      snapshot.remainingSeconds != null
+    ) {
+      elapsedSeconds = Math.max(
+        0,
+        Math.floor(resolution.matchedEpisode.durationSeconds - snapshot.remainingSeconds),
+      );
+      startedAt = new Date(now.getTime() - elapsedSeconds * 1000).toISOString();
+    }
+
+    const episodeTracks = await getEpisodeTracks(resolution.matchedEpisode.id);
+    currentTrack = getCurrentTrack(episodeTracks, elapsedSeconds);
+  }
+
+  return {
+    nowPlaying: buildNowPlaying(
+      resolution.displayEpisode,
+      currentTrack,
+      elapsedSeconds,
+      startedAt,
+    ),
+    online: true,
+  };
 }
 
 export async function getStreamStatus(): Promise<StreamStatus> {
@@ -277,8 +293,26 @@ export async function getCurrentNowPlaying(now = new Date()): Promise<NowPlaying
     .orderBy(desc(playbackLog.startedAt))
     .limit(1);
 
+  const liveNowPlaying = await getLiquidsoapNowPlaying(
+    now,
+    currentPlayback
+      ? {
+          episodeId: currentPlayback.episodeId,
+          startedAt: currentPlayback.startedAt,
+        }
+      : null,
+  );
+
+  if (liveNowPlaying.nowPlaying) {
+    return liveNowPlaying.nowPlaying;
+  }
+
   if (!currentPlayback) {
-    return await getLiquidsoapNowPlaying(now);
+    return null;
+  }
+
+  if (liveNowPlaying.online) {
+    return null;
   }
 
   const elapsedSeconds = Math.max(

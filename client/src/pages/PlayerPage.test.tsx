@@ -216,7 +216,7 @@ describe('PlayerPage', () => {
     expect(screen.getByText('Valentines Day Special | DJ Reservoir')).toBeInTheDocument();
   });
 
-  it('falls back to the latest archive episode metadata when no now-playing episode is available', async () => {
+  it('falls back to the latest archive episode metadata when the stream is offline and no now-playing episode is available', async () => {
     requestDataMock.mockImplementation(async (path) => {
       if (path === '/api/episodes?limit=12') {
         return structuredClone(archiveFixture);
@@ -258,6 +258,43 @@ describe('PlayerPage', () => {
     expect(summary).not.toBeNull();
     expect(summary).toHaveTextContent('Night Drive');
     expect(summary).not.toHaveTextContent('Test Pattern');
+  });
+
+  it('does not borrow archive metadata while the stream is live and now-playing is unavailable', async () => {
+    requestDataMock.mockImplementation(async (path) => {
+      if (path === '/api/episodes?limit=12') {
+        return structuredClone(archiveFixture);
+      }
+
+      if (path === '/api/stream/status') {
+        return {
+          checkedAt: '2026-04-08T00:00:00.000Z',
+          librarySize: 2,
+          online: true,
+          queueLength: 1,
+          streamUrl: '/stream',
+        };
+      }
+
+      if (path === '/api/stream/now-playing') {
+        return null;
+      }
+
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    renderPlayerPage();
+
+    await screen.findByText('On Air Now');
+
+    expect(screen.queryByTestId('hero-presenter-line')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /artwork for test pattern/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /listen on mixcloud/i })).not.toBeInTheDocument();
+
+    const accordion = screen.getByTestId('up-next-accordion');
+    const summary = accordion.querySelector('summary');
+    expect(summary).not.toBeNull();
+    expect(summary).toHaveTextContent('Test Pattern');
   });
 
   it('does not borrow artwork from a different archive episode when now-playing artwork is missing', async () => {

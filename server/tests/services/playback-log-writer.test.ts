@@ -6,12 +6,18 @@ const dbMock = vi.hoisted(() => ({
   insert: vi.fn(),
 }));
 
-const liquidsoapMock = vi.hoisted(() => ({
-  getStreamSnapshot: vi.fn(),
+const liveCurrentAudioMock = vi.hoisted(() => ({
+  resolveLiveCurrentAudio: vi.fn(),
 }));
 
 const icecastMock = vi.hoisted(() => ({
   fetchCurrentListenerCount: vi.fn(),
+}));
+
+const loggerMock = vi.hoisted(() => ({
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
 }));
 
 vi.mock('../../src/db/index.js', () => ({
@@ -22,8 +28,11 @@ vi.mock('../../src/db/index.js', () => ({
   },
 }));
 
-vi.mock('../../src/services/stream-poller.js', () => liquidsoapMock);
+vi.mock('../../src/services/live-current-audio.js', () => liveCurrentAudioMock);
 vi.mock('../../src/services/icecast.js', () => icecastMock);
+vi.mock('../../src/lib/logger.js', () => ({
+  logger: loggerMock,
+}));
 
 describe('playback-log writer', () => {
   beforeEach(() => {
@@ -35,17 +44,13 @@ describe('playback-log writer', () => {
     dbMock.select.mockReset();
     dbMock.update.mockReset();
     dbMock.insert.mockReset();
-    liquidsoapMock.getStreamSnapshot.mockReset();
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockReset();
     icecastMock.fetchCurrentListenerCount.mockReset();
     icecastMock.fetchCurrentListenerCount.mockResolvedValue(0);
+    loggerMock.error.mockReset();
+    loggerMock.info.mockReset();
+    loggerMock.warn.mockReset();
   });
-
-  function mockEpisodeLookup(episode: { id: string } | null) {
-    const limit = vi.fn().mockResolvedValue(episode ? [episode] : []);
-    const where = vi.fn(() => ({ limit }));
-    const from = vi.fn(() => ({ where }));
-    return { from };
-  }
 
   function mockOpenRowLookup(
     openRow:
@@ -79,28 +84,43 @@ describe('playback-log writer', () => {
   }
 
   it('does nothing when the open row already represents the current episode', async () => {
-    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
-      checkedAt: '2026-04-12T01:00:00.000Z',
-      currentRequest: {
-        requestId: '1',
-        filePath: '/library/episode-a.mp3',
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: null,
+        displayEpisode: {
+          artworkUrl: null,
+          broadcastDate: null,
+          id: 'episode-a',
+          mixcloudUrl: null,
+          presenter: null,
+          slug: 'episode-a',
+          title: 'Episode A',
+        },
+        matchedEpisode: { id: 'episode-a' },
+        resolutionSource: 'exact_file_path',
       },
-      online: true,
-      queue: [],
-      remainingSeconds: null,
+      selfHealed: false,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:00.000Z',
+        currentRequest: {
+          requestId: '1',
+          filePath: '/library/episode-a.mp3',
+        },
+        online: true,
+        queue: [],
+        remainingSeconds: null,
+      },
     });
 
-    dbMock.select
-      .mockReturnValueOnce(mockEpisodeLookup({ id: 'episode-a' })) // file → episode
-      .mockReturnValueOnce(
-        mockOpenRowLookup({
-          id: 'log-1',
-          episodeId: 'episode-a',
-          listenerPeak: 2,
-          listenerSamples: 1,
-          listenerTotal: 2,
-        }),
-      ); // open row
+    dbMock.select.mockReturnValueOnce(
+      mockOpenRowLookup({
+        id: 'log-1',
+        episodeId: 'episode-a',
+        listenerPeak: 2,
+        listenerSamples: 1,
+        listenerTotal: 2,
+      }),
+    );
 
     icecastMock.fetchCurrentListenerCount.mockResolvedValue(3);
 
@@ -115,20 +135,35 @@ describe('playback-log writer', () => {
   });
 
   it('inserts a new row when there is no open row and a known file is playing', async () => {
-    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
-      checkedAt: '2026-04-12T01:00:00.000Z',
-      currentRequest: {
-        requestId: '1',
-        filePath: '/library/episode-a.mp3',
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: null,
+        displayEpisode: {
+          artworkUrl: null,
+          broadcastDate: null,
+          id: 'episode-a',
+          mixcloudUrl: null,
+          presenter: null,
+          slug: 'episode-a',
+          title: 'Episode A',
+        },
+        matchedEpisode: { id: 'episode-a' },
+        resolutionSource: 'exact_file_path',
       },
-      online: true,
-      queue: [],
-      remainingSeconds: null,
+      selfHealed: false,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:00.000Z',
+        currentRequest: {
+          requestId: '1',
+          filePath: '/library/episode-a.mp3',
+        },
+        online: true,
+        queue: [],
+        remainingSeconds: null,
+      },
     });
 
-    dbMock.select
-      .mockReturnValueOnce(mockEpisodeLookup({ id: 'episode-a' }))
-      .mockReturnValueOnce(mockOpenRowLookup(null));
+    dbMock.select.mockReturnValueOnce(mockOpenRowLookup(null));
 
     const { valuesSpy } = mockInsert();
 
@@ -141,20 +176,35 @@ describe('playback-log writer', () => {
   });
 
   it('closes prior open row and inserts new row on transition between episodes', async () => {
-    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
-      checkedAt: '2026-04-12T01:00:00.000Z',
-      currentRequest: {
-        requestId: '2',
-        filePath: '/library/episode-b.mp3',
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: null,
+        displayEpisode: {
+          artworkUrl: null,
+          broadcastDate: null,
+          id: 'episode-b',
+          mixcloudUrl: null,
+          presenter: null,
+          slug: 'episode-b',
+          title: 'Episode B',
+        },
+        matchedEpisode: { id: 'episode-b' },
+        resolutionSource: 'exact_file_path',
       },
-      online: true,
-      queue: [],
-      remainingSeconds: null,
+      selfHealed: false,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:00.000Z',
+        currentRequest: {
+          requestId: '2',
+          filePath: '/library/episode-b.mp3',
+        },
+        online: true,
+        queue: [],
+        remainingSeconds: null,
+      },
     });
 
-    dbMock.select
-      .mockReturnValueOnce(mockEpisodeLookup({ id: 'episode-b' }))
-      .mockReturnValueOnce(mockOpenRowLookup({ id: 'log-1', episodeId: 'episode-a' }));
+    dbMock.select.mockReturnValueOnce(mockOpenRowLookup({ id: 'log-1', episodeId: 'episode-a' }));
 
     const { whereSpy } = mockUpdate();
     const { valuesSpy } = mockInsert();
@@ -169,20 +219,27 @@ describe('playback-log writer', () => {
   });
 
   it('closes prior open row without inserting when current file is unknown', async () => {
-    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
-      checkedAt: '2026-04-12T01:00:00.000Z',
-      currentRequest: {
-        requestId: '3',
-        filePath: '/library/test-tone.mp3',
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: null,
+        displayEpisode: null,
+        matchedEpisode: null,
+        resolutionSource: 'none',
       },
-      online: true,
-      queue: [],
-      remainingSeconds: null,
+      selfHealed: false,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:00.000Z',
+        currentRequest: {
+          requestId: '3',
+          filePath: '/library/test-tone.mp3',
+        },
+        online: true,
+        queue: [],
+        remainingSeconds: null,
+      },
     });
 
-    dbMock.select
-      .mockReturnValueOnce(mockEpisodeLookup(null)) // unknown file
-      .mockReturnValueOnce(mockOpenRowLookup({ id: 'log-1', episodeId: 'episode-a' }));
+    dbMock.select.mockReturnValueOnce(mockOpenRowLookup({ id: 'log-1', episodeId: 'episode-a' }));
 
     const { whereSpy } = mockUpdate();
 
@@ -194,13 +251,72 @@ describe('playback-log writer', () => {
     expect(dbMock.insert).not.toHaveBeenCalled();
   });
 
+  it('logs a warning when fallback recovery is used for the live audio', async () => {
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: {
+          details: {
+            matchedEpisodeId: 'episode-heuristic',
+            resolutionSource: 'stream_tags',
+          },
+          key: 'fallback|stream_tags|episode-heuristic',
+          kind: 'fallback_resolved',
+        },
+        displayEpisode: {
+          artworkUrl: null,
+          broadcastDate: '2026-02-08',
+          id: 'episode-heuristic',
+          mixcloudUrl: null,
+          presenter: 'Strict Face',
+          slug: '2026-02-08-heuristic-778879',
+          title: 'Heuristic',
+        },
+        matchedEpisode: { id: 'episode-heuristic' },
+        resolutionSource: 'stream_tags',
+      },
+      selfHealed: true,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:01.000Z',
+        currentRequest: {
+          artist: 'Strict Face',
+          requestId: null,
+          filePath: '/library/live.mp3',
+          title: 'Heuristic | Strict Face',
+        },
+        online: true,
+        queue: [],
+        remainingSeconds: null,
+      },
+    });
+
+    dbMock.select.mockReturnValueOnce(mockOpenRowLookup(null));
+
+    const { valuesSpy } = mockInsert();
+
+    const { tickPlaybackLog } = await import('../../src/services/playback-log-writer.js');
+    const now = new Date('2026-04-07T00:00:00Z');
+    await tickPlaybackLog(now);
+
+    expect(valuesSpy).toHaveBeenCalledWith({ episodeId: 'episode-heuristic', startedAt: now });
+    expect(loggerMock.warn).toHaveBeenCalledTimes(1);
+  });
+
   it('does nothing when liquidsoap is silent and there is no open row', async () => {
-    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
-      checkedAt: '2026-04-12T01:00:00.000Z',
-      currentRequest: null,
-      online: true,
-      queue: [],
-      remainingSeconds: null,
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: null,
+        displayEpisode: null,
+        matchedEpisode: null,
+        resolutionSource: 'none',
+      },
+      selfHealed: false,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:00.000Z',
+        currentRequest: null,
+        online: true,
+        queue: [],
+        remainingSeconds: null,
+      },
     });
 
     dbMock.select.mockReturnValueOnce(mockOpenRowLookup(null));
@@ -213,12 +329,21 @@ describe('playback-log writer', () => {
   });
 
   it('swallows liquidsoap errors so the poller never crashes the API server', async () => {
-    liquidsoapMock.getStreamSnapshot.mockResolvedValue({
-      checkedAt: '2026-04-12T01:00:00.000Z',
-      currentRequest: null,
-      online: false,
-      queue: [],
-      remainingSeconds: null,
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: null,
+        displayEpisode: null,
+        matchedEpisode: null,
+        resolutionSource: 'none',
+      },
+      selfHealed: false,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:00.000Z',
+        currentRequest: null,
+        online: false,
+        queue: [],
+        remainingSeconds: null,
+      },
     });
 
     dbMock.select.mockReturnValueOnce(mockOpenRowLookup(null));

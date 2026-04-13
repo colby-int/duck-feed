@@ -156,20 +156,22 @@ export function PlayerPage() {
   }
 
   const fallbackEpisode = episodes[0] ?? null;
+  const isStreamLive = streamStatus?.online === true;
   const currentEpisode = nowPlaying?.episode ?? null;
-  const displayedEpisodeId = currentEpisode?.id ?? fallbackEpisode?.id ?? null;
-  const heroTitle = currentEpisode?.title ?? fallbackEpisode?.title ?? 'duckfeed';
-  const heroPresenter = currentEpisode?.presenter ?? fallbackEpisode?.presenter ?? null;
-  const heroArtworkUrl =
-    currentEpisode != null ? currentEpisode.artworkUrl ?? null : fallbackEpisode?.artworkUrl ?? null;
-  const heroMixcloudUrl =
-    currentEpisode != null ? currentEpisode.mixcloudUrl ?? null : fallbackEpisode?.mixcloudUrl ?? null;
-  const heroDate = formatBroadcastDate(currentEpisode?.broadcastDate ?? fallbackEpisode?.broadcastDate) ?? 'Live archive stream';
+  const shouldUseArchiveFallback = !isStreamLive;
+  const displayEpisode = currentEpisode ?? (shouldUseArchiveFallback ? fallbackEpisode : null);
+  const displayedEpisodeId = displayEpisode?.id ?? null;
+  const heroTitle = displayEpisode?.title ?? (isStreamLive ? 'On Air Now' : 'duckfeed');
+  const heroPresenter = displayEpisode?.presenter ?? null;
+  const heroArtworkUrl = displayEpisode?.artworkUrl ?? null;
+  const heroMixcloudUrl = displayEpisode?.mixcloudUrl ?? null;
+  const heroDate =
+    formatBroadcastDate(displayEpisode?.broadcastDate) ??
+    (isStreamLive ? 'Live stream' : 'Live archive stream');
   const upcomingEpisodes = episodes.filter((episode) => episode.id !== displayedEpisodeId).slice(0, 6);
   const nextUpcomingEpisode = upcomingEpisodes[0] ?? null;
   const queuedEpisodes = upcomingEpisodes.slice(1);
   const nextUpcomingDate = formatBroadcastDate(nextUpcomingEpisode?.broadcastDate);
-  const isStreamLive = streamStatus?.online === true;
   const liveBadgeLabel = streamStatus == null ? 'checking' : isStreamLive ? 'live' : 'offline';
   const displayStreamUrl =
     typeof window === 'undefined'

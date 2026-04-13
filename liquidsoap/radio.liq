@@ -32,10 +32,16 @@ radio = mksafe(id="radio", radio)
 
 # Track the currently playing file path so the API can identify the episode.
 current_file = ref("")
+current_title = ref("")
+current_artist = ref("")
 radio.on_metadata(fun(m) -> begin
   current_file := m["filename"]
+  current_title := m["title"]
+  current_artist := m["artist"]
 end)
-server.register("current.file", fun(_) -> !current_file)
+server.register("current.file", fun(_) -> current_file())
+server.register("current.title", fun(_) -> current_title())
+server.register("current.artist", fun(_) -> current_artist())
 
 # Output to Icecast
 output.icecast(

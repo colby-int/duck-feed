@@ -8,6 +8,10 @@ const liquidsoapMock = vi.hoisted(() => ({
   getRequestMetadata: vi.fn(),
 }));
 
+const liveCurrentAudioMock = vi.hoisted(() => ({
+  resolveLiveCurrentAudio: vi.fn(),
+}));
+
 const streamPollerMock = vi.hoisted(() => ({
   getStreamSnapshot: vi.fn(),
 }));
@@ -19,6 +23,7 @@ vi.mock('../../src/db/index.js', () => ({
 }));
 
 vi.mock('../../src/services/liquidsoap.js', () => liquidsoapMock);
+vi.mock('../../src/services/live-current-audio.js', () => liveCurrentAudioMock);
 vi.mock('../../src/services/stream-poller.js', () => streamPollerMock);
 
 describe('stream state service', () => {
@@ -26,6 +31,7 @@ describe('stream state service', () => {
     vi.resetModules();
     dbMock.select.mockReset();
     liquidsoapMock.getRequestMetadata.mockReset();
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockReset();
     streamPollerMock.getStreamSnapshot.mockReset();
   });
 
@@ -37,18 +43,6 @@ describe('stream state service', () => {
     const playbackWhere = vi.fn(() => ({ orderBy: playbackOrderBy }));
     const playbackInnerJoin = vi.fn(() => ({ where: playbackWhere }));
     const playbackFrom = vi.fn(() => ({ innerJoin: playbackInnerJoin }));
-
-    const episodeLimit = vi.fn().mockResolvedValue([
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        title: 'Episode 1',
-        presenter: 'Gary Butterfield',
-        slug: 'episode-1',
-        durationSeconds: 120,
-      },
-    ]);
-    const episodeWhere = vi.fn(() => ({ limit: episodeLimit }));
-    const episodeFrom = vi.fn(() => ({ where: episodeWhere }));
 
     const tracksOrderBy = vi.fn().mockResolvedValue([
       {
@@ -73,24 +67,52 @@ describe('stream state service', () => {
 
     dbMock.select
       .mockImplementationOnce(() => ({ from: playbackFrom }))
-      .mockImplementationOnce(() => ({ from: episodeFrom }))
       .mockImplementationOnce(() => ({ from: tracksFrom }));
 
-    streamPollerMock.getStreamSnapshot.mockResolvedValue({
-      checkedAt: '2026-04-12T01:00:00.000Z',
-      currentRequest: {
-        requestId: '12',
-        filePath: '/var/lib/duckfeed/library/episode-1.mp3',
+    liveCurrentAudioMock.resolveLiveCurrentAudio.mockResolvedValue({
+      resolution: {
+        alert: null,
+        displayEpisode: {
+          artworkUrl: undefined,
+          broadcastDate: undefined,
+          id: '11111111-1111-4111-8111-111111111111',
+          mixcloudUrl: undefined,
+          presenter: 'Gary Butterfield',
+          slug: 'episode-1',
+          title: 'Episode 1',
+        },
+        matchedEpisode: {
+          artworkUrl: undefined,
+          broadcastDate: undefined,
+          createdAt: new Date('2026-04-10T00:00:00.000Z'),
+          durationSeconds: 120,
+          filePath: '/var/lib/duckfeed/library/episode-1.mp3',
+          id: '11111111-1111-4111-8111-111111111111',
+          mixcloudUrl: undefined,
+          originalFilename: undefined,
+          presenter: 'Gary Butterfield',
+          slug: 'episode-1',
+          title: 'Episode 1',
+        },
+        resolutionSource: 'exact_file_path',
       },
-      online: true,
-      queue: [],
-      remainingSeconds: 30,
+      selfHealed: false,
+      snapshot: {
+        checkedAt: '2026-04-12T01:00:00.000Z',
+        currentRequest: {
+          requestId: '12',
+          filePath: '/var/lib/duckfeed/library/episode-1.mp3',
+        },
+        online: true,
+        queue: [],
+        remainingSeconds: 30,
+      },
     });
 
     const { getCurrentNowPlaying } = await import('../../src/services/stream-state.js');
     const result = await getCurrentNowPlaying(now);
 
-    expect(streamPollerMock.getStreamSnapshot).toHaveBeenCalledTimes(1);
+    expect(liveCurrentAudioMock.resolveLiveCurrentAudio).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       startedAt: '2026-04-07T01:58:30.000Z',
       elapsedSeconds: 90,

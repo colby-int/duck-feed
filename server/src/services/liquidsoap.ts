@@ -2,6 +2,7 @@ import net from 'node:net';
 import { config } from '../config.js';
 
 const TELNET_TIMEOUT_MS = 3_000;
+const UNSUPPORTED_COMMAND_PATTERNS = [/^ERROR:\s+unknown command/i, /^No such command:/i];
 
 function parseResponse(raw: string): string[] {
   return raw
@@ -28,6 +29,15 @@ function parseMetadata(lines: string[]): Record<string, string> {
   }
 
   return metadata;
+}
+
+class LiquidsoapCommandError extends Error {
+  constructor(
+    public readonly command: string,
+    public readonly responseLines: string[],
+  ) {
+    super(`Liquidsoap command failed: ${command}: ${responseLines[0] ?? 'unknown error'}`);
+  }
 }
 
 function extractResponseFrame(
@@ -97,7 +107,15 @@ async function withTelnetSession<T>(
       activeCommand = null;
       buffer = frame.remainder;
       clearTimeout(current.timeout);
-      current.resolve(parseResponse(frame.response));
+      const responseLines = parseResponse(frame.response);
+      const responseError = parseCommandError(current.command, responseLines);
+
+      if (responseError) {
+        current.reject(responseError);
+        return;
+      }
+
+      current.resolve(responseLines);
     };
 
     const send = async (command: string): Promise<string[]> => {
@@ -169,6 +187,8 @@ export async function getQueue(): Promise<string[]> {
 export interface LiquidsoapCurrentRequest {
   requestId: string | null;
   filePath: string | null;
+  artist?: string | null;
+  title?: string | null;
 }
 
 export interface LiquidsoapStreamState {
@@ -188,18 +208,12 @@ export async function getRequestMetadata(requestId: string): Promise<LiquidsoapC
 }
 
 export async function getCurrentFile(): Promise<string | null> {
-  const lines = await sendCommand('current.file');
-  const filePath = lines[0]?.trim();
-  return filePath || null;
+  const current = await getCurrentRequest();
+  return current?.filePath ?? null;
 }
 
 export async function getCurrentRequest(): Promise<LiquidsoapCurrentRequest | null> {
-  const filePath = await getCurrentFile();
-  if (!filePath) {
-    return null;
-  }
-
-  return { requestId: null, filePath };
+  return await withTelnetSession(async (send) => await getCurrentRequestFromSession(send));
 }
 
 export async function getRemainingSeconds(): Promise<number | null> {
@@ -216,11 +230,7 @@ export async function getRemainingSeconds(): Promise<number | null> {
 
 export async function pollLiquidsoapState(now = new Date()): Promise<LiquidsoapStreamState> {
   return await withTelnetSession(async (send) => {
-    const currentFileLines = await send('current.file');
-    const currentFilePath = currentFileLines[0]?.trim() || null;
-    const currentRequest: LiquidsoapCurrentRequest | null = currentFilePath
-      ? { requestId: null, filePath: currentFilePath }
-      : null;
+    const currentRequest = await getCurrentRequestFromSession(send);
     const remainingRaw = await send('output.icecast.remaining');
     const queue = await send('queue.queue');
 
@@ -265,4 +275,95 @@ function parseRemainingSeconds(raw: string[]): number | null {
 
   const remaining = Number.parseFloat(value);
   return Number.isFinite(remaining) ? remaining : null;
+}
+
+async function getCurrentRequestFromSession(
+  send: (command: string) => Promise<string[]>,
+): Promise<LiquidsoapCurrentRequest | null> {
+  const currentFileLines = await sendOptionalCommand(send, 'current.file');
+  const currentFilePath = currentFileLines[0]?.trim() || null;
+
+  const currentTitleLines = await sendOptionalCommand(send, 'current.title');
+  const currentArtistLines = await sendOptionalCommand(send, 'current.artist');
+  const callbackTitle = currentTitleLines[0]?.trim() || null;
+  const callbackArtist = currentArtistLines[0]?.trim() || null;
+
+  const outputMetadataLines = await sendOptionalCommand(send, 'output.icecast.metadata');
+  const outputMetadata = parseOutputMetadata(outputMetadataLines);
+  const title = callbackTitle ?? outputMetadata.title ?? null;
+  const artist = callbackArtist ?? outputMetadata.artist ?? null;
+
+  if (!currentFilePath && !title && !artist) {
+    return null;
+  }
+
+  return {
+    requestId: null,
+    filePath: currentFilePath,
+    ...(artist ? { artist } : {}),
+    ...(title ? { title } : {}),
+  };
+}
+
+async function sendOptionalCommand(
+  send: (command: string) => Promise<string[]>,
+  command: string,
+): Promise<string[]> {
+  try {
+    return await send(command);
+  } catch (error) {
+    if (isUnsupportedCommandError(error)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+function parseOutputMetadata(lines: string[]): Record<string, string> {
+  if (lines.length === 0) {
+    return {};
+  }
+
+  const blocks: string[][] = [];
+  let currentBlock: string[] = [];
+
+  for (const line of lines) {
+    if (/^---\s+\d+\s+---$/.test(line)) {
+      if (currentBlock.length > 0) {
+        blocks.push(currentBlock);
+      }
+      currentBlock = [];
+      continue;
+    }
+
+    currentBlock.push(line);
+  }
+
+  if (currentBlock.length > 0) {
+    blocks.push(currentBlock);
+  }
+
+  return parseMetadata(blocks[0] ?? lines);
+}
+
+function parseCommandError(command: string, responseLines: string[]): LiquidsoapCommandError | null {
+  const firstLine = responseLines[0];
+  if (!firstLine) {
+    return null;
+  }
+
+  if (UNSUPPORTED_COMMAND_PATTERNS.some((pattern) => pattern.test(firstLine))) {
+    return new LiquidsoapCommandError(command, responseLines);
+  }
+
+  return null;
+}
+
+function isUnsupportedCommandError(error: unknown): error is LiquidsoapCommandError {
+  if (!(error instanceof LiquidsoapCommandError)) {
+    return false;
+  }
+
+  const firstLine = error.responseLines[0] ?? '';
+  return UNSUPPORTED_COMMAND_PATTERNS.some((pattern) => pattern.test(firstLine));
 }
