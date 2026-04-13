@@ -167,7 +167,7 @@ export async function getQueue(): Promise<string[]> {
 }
 
 export interface LiquidsoapCurrentRequest {
-  requestId: string;
+  requestId: string | null;
   filePath: string | null;
 }
 
@@ -187,17 +187,19 @@ export async function getRequestMetadata(requestId: string): Promise<LiquidsoapC
   };
 }
 
-export async function getCurrentRequest(): Promise<LiquidsoapCurrentRequest | null> {
-  const requestIds = (await sendCommand('request.on_air')).flatMap((line) =>
-    line.split(/\s+/).filter(Boolean),
-  );
-  const requestId = requestIds[0];
+export async function getCurrentFile(): Promise<string | null> {
+  const lines = await sendCommand('current.file');
+  const filePath = lines[0]?.trim();
+  return filePath || null;
+}
 
-  if (!requestId) {
+export async function getCurrentRequest(): Promise<LiquidsoapCurrentRequest | null> {
+  const filePath = await getCurrentFile();
+  if (!filePath) {
     return null;
   }
 
-  return await getRequestMetadata(requestId);
+  return { requestId: null, filePath };
 }
 
 export async function getRemainingSeconds(): Promise<number | null> {
@@ -214,11 +216,11 @@ export async function getRemainingSeconds(): Promise<number | null> {
 
 export async function pollLiquidsoapState(now = new Date()): Promise<LiquidsoapStreamState> {
   return await withTelnetSession(async (send) => {
-    const requestIds = (await send('request.on_air')).flatMap((line) =>
-      line.split(/\s+/).filter(Boolean),
-    );
-    const requestId = requestIds[0] ?? null;
-    const currentRequest = requestId ? await getCurrentRequestFromSession(send, requestId) : null;
+    const currentFileLines = await send('current.file');
+    const currentFilePath = currentFileLines[0]?.trim() || null;
+    const currentRequest: LiquidsoapCurrentRequest | null = currentFilePath
+      ? { requestId: null, filePath: currentFilePath }
+      : null;
     const remainingRaw = await send('output.icecast.remaining');
     const queue = await send('queue.queue');
 
@@ -252,17 +254,6 @@ export async function pingLiquidsoap(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-async function getCurrentRequestFromSession(
-  send: (command: string) => Promise<string[]>,
-  requestId: string,
-): Promise<LiquidsoapCurrentRequest> {
-  const metadata = parseMetadata(await send(`request.metadata ${requestId}`));
-  return {
-    requestId,
-    filePath: metadata.filename ?? metadata.initial_uri ?? null,
-  };
 }
 
 function parseRemainingSeconds(raw: string[]): number | null {
