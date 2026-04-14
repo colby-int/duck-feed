@@ -49,20 +49,31 @@ export async function tickRotationManager(): Promise<void> {
     return;
   }
 
-  const nextEntry = await peekNextRotationQueueEntry();
-  if (!nextEntry) {
-    return;
-  }
+  // Try entries in queue order. If the front entry can't be cached (e.g.
+  // legacy slug not in Duckhaus), skip it so the queue doesn't stall.
+  const MAX_SKIP = 5;
+  for (let attempt = 0; attempt < MAX_SKIP; attempt++) {
+    const nextEntry = await peekNextRotationQueueEntry();
+    if (!nextEntry) {
+      return;
+    }
 
-  const filePath =
-    nextEntry.filePath ?? (await ensureDuckhausEpisodeCached(nextEntry.episodeId));
-  if (!filePath) {
-    return;
-  }
+    const filePath =
+      nextEntry.filePath ?? (await ensureDuckhausEpisodeCached(nextEntry.episodeId));
+    if (filePath) {
+      await pushQueue(filePath);
+      await removeRotationQueueEntry(nextEntry.queueEntryId);
+      await pruneCachedEpisodes();
+      return;
+    }
 
-  await pushQueue(filePath);
-  await removeRotationQueueEntry(nextEntry.queueEntryId);
-  await pruneCachedEpisodes();
+    // Episode has no local file and can't be fetched — skip it.
+    logger.warn(
+      { episodeId: nextEntry.episodeId, queueEntryId: nextEntry.queueEntryId },
+      'rotation-manager: skipping uncacheable episode',
+    );
+    await removeRotationQueueEntry(nextEntry.queueEntryId);
+  }
 }
 
 export function startRotationManager(): void {
