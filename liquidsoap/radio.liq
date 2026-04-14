@@ -36,7 +36,10 @@ radio = mksafe(id="radio", radio)
 current_metadata = ref("")
 
 radio.on_metadata(fun(m) -> begin
-  current_metadata := "#{m["filename"]}\t#{m["title"]}\t#{m["artist"]}"
+  let f = m["filename"]
+  let t = m["title"]
+  let a = m["artist"]
+  current_metadata := "#{f}\t#{t}\t#{a}"
 end)
 
 server.register("current.metadata", fun(_) -> current_metadata())
