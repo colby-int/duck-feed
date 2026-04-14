@@ -280,28 +280,48 @@ function parseRemainingSeconds(raw: string[]): number | null {
 async function getCurrentRequestFromSession(
   send: (command: string) => Promise<string[]>,
 ): Promise<LiquidsoapCurrentRequest | null> {
-  const currentFileLines = await sendOptionalCommand(send, 'current.file');
-  const currentFilePath = currentFileLines[0]?.trim() || null;
+  // Try the atomic current.metadata command first (tab-delimited:
+  // filename\ttitle\tartist). All three fields are captured in a single
+  // on_metadata callback and stored in one ref, so they are always from the
+  // same track — no inter-query race conditions.
+  const metadataLines = await sendOptionalCommand(send, 'current.metadata');
+  const metadataLine = metadataLines[0] ?? '';
 
-  const currentTitleLines = await sendOptionalCommand(send, 'current.title');
-  const currentArtistLines = await sendOptionalCommand(send, 'current.artist');
-  const callbackTitle = currentTitleLines[0]?.trim() || null;
-  const callbackArtist = currentArtistLines[0]?.trim() || null;
+  if (metadataLine.includes('\t')) {
+    const [filePath, title, artist] = metadataLine.split('\t');
+    const trimmedFile = filePath?.trim() || null;
+    const trimmedTitle = title?.trim() || null;
+    const trimmedArtist = artist?.trim() || null;
 
+    if (!trimmedFile && !trimmedTitle && !trimmedArtist) {
+      return null;
+    }
+
+    return {
+      requestId: null,
+      filePath: trimmedFile,
+      ...(trimmedTitle ? { title: trimmedTitle } : {}),
+      ...(trimmedArtist ? { artist: trimmedArtist } : {}),
+    };
+  }
+
+  // Fallback for older Liquidsoap configs without current.metadata:
+  // use output.icecast.metadata.
   const outputMetadataLines = await sendOptionalCommand(send, 'output.icecast.metadata');
   const outputMetadata = parseOutputMetadata(outputMetadataLines);
-  const title = callbackTitle ?? outputMetadata.title ?? null;
-  const artist = callbackArtist ?? outputMetadata.artist ?? null;
+  const title = outputMetadata.title ?? null;
+  const artist = outputMetadata.artist ?? null;
+  const filePath = outputMetadata.filename ?? null;
 
-  if (!currentFilePath && !title && !artist) {
+  if (!filePath && !title && !artist) {
     return null;
   }
 
   return {
     requestId: null,
-    filePath: currentFilePath,
-    ...(artist ? { artist } : {}),
+    filePath,
     ...(title ? { title } : {}),
+    ...(artist ? { artist } : {}),
   };
 }
 

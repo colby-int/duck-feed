@@ -82,13 +82,41 @@ describe('liquidsoap service', () => {
     delete process.env.LIQUIDSOAP_TELNET_PORT;
   });
 
-  it('falls back to output metadata when custom current-file commands are unavailable', async () => {
+  it('parses atomic current.metadata with tab-delimited fields', async () => {
     const fakeLiquidsoap = await startFakeLiquidsoap({
-      'current.file':
-        'ERROR: unknown command, type "help" to get a list of commands."\nEND\n',
-      'current.title':
-        'ERROR: unknown command, type "help" to get a list of commands."\nEND\n',
-      'current.artist':
+      'current.metadata':
+        '/var/lib/duckfeed/library/2026-02-08-homesweet-6c28ab.mp3\tHome Sweet | Marley\tMarley\nEND\n',
+      'output.icecast.remaining': '42\nEND\n',
+      'queue.queue': '5\nEND\n',
+    });
+
+    process.env.LIQUIDSOAP_TELNET_HOST = '127.0.0.1';
+    process.env.LIQUIDSOAP_TELNET_PORT = String(fakeLiquidsoap.port);
+
+    try {
+      const { pollLiquidsoapState } = await import('../../src/services/liquidsoap.js');
+      const snapshot = await pollLiquidsoapState(new Date('2026-04-13T12:00:00.000Z'));
+
+      expect(snapshot).toEqual({
+        checkedAt: '2026-04-13T12:00:00.000Z',
+        currentRequest: {
+          artist: 'Marley',
+          filePath: '/var/lib/duckfeed/library/2026-02-08-homesweet-6c28ab.mp3',
+          requestId: null,
+          title: 'Home Sweet | Marley',
+        },
+        online: true,
+        queue: ['5'],
+        remainingSeconds: 42,
+      });
+    } finally {
+      await fakeLiquidsoap.close();
+    }
+  });
+
+  it('falls back to output.icecast.metadata when current.metadata is unavailable', async () => {
+    const fakeLiquidsoap = await startFakeLiquidsoap({
+      'current.metadata':
         'ERROR: unknown command, type "help" to get a list of commands."\nEND\n',
       'output.icecast.metadata':
         '--- 1 ---\n' +
@@ -123,18 +151,11 @@ describe('liquidsoap service', () => {
     }
   });
 
-  it('prefers callback-captured on-air metadata over output metadata when both are available', async () => {
+  it('returns null currentRequest when current.metadata is empty', async () => {
     const fakeLiquidsoap = await startFakeLiquidsoap({
-      'current.file': '/var/lib/duckfeed/library/2026-02-08-homesweet-6c28ab.mp3\nEND\n',
-      'current.title': 'Home Sweet | Marley\nEND\n',
-      'current.artist': 'Marley\nEND\n',
-      'output.icecast.metadata':
-        '--- 1 ---\n' +
-        'title="Stale Show | Wrong Host"\n' +
-        'artist="Wrong Host"\n' +
-        'END\n',
+      'current.metadata': '\t\t\nEND\n',
       'output.icecast.remaining': '42\nEND\n',
-      'queue.queue': '5\nEND\n',
+      'queue.queue': '\nEND\n',
     });
 
     process.env.LIQUIDSOAP_TELNET_HOST = '127.0.0.1';
@@ -144,12 +165,7 @@ describe('liquidsoap service', () => {
       const { pollLiquidsoapState } = await import('../../src/services/liquidsoap.js');
       const snapshot = await pollLiquidsoapState(new Date('2026-04-13T12:00:00.000Z'));
 
-      expect(snapshot.currentRequest).toEqual({
-        artist: 'Marley',
-        filePath: '/var/lib/duckfeed/library/2026-02-08-homesweet-6c28ab.mp3',
-        requestId: null,
-        title: 'Home Sweet | Marley',
-      });
+      expect(snapshot.currentRequest).toBeNull();
     } finally {
       await fakeLiquidsoap.close();
     }
