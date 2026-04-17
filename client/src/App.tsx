@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { SiteAppearanceProvider } from './context/SiteAppearanceContext';
 import { useAuth } from './hooks/use-auth';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { AdminSchedulePage } from './pages/AdminSchedulePage';
 import { AppearancePage } from './pages/AppearancePage';
 import { EpisodeDetailPage } from './pages/EpisodeDetailPage';
 import { EpisodesPage } from './pages/EpisodesPage';
@@ -60,6 +61,7 @@ export function App() {
             <Route element={<EpisodeDetailPage />} path="episodes/:id" />
             <Route element={<IngestPage />} path="ingest" />
             <Route element={<StreamPage />} path="stream" />
+            <Route element={<AdminSchedulePage />} path="schedule" />
           </Route>
         </Route>
       </Routes>

@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
   getStreamAudioUrl,
+  getStreamSnapshot,
   requestData,
   type EpisodeSummary,
+  type LiveModeInfo,
   type NowPlaying,
+  type StreamSnapshot,
   type StreamStatus,
 } from '../api/client';
 import { HeroTitle } from '../components/hero-title';
@@ -37,6 +40,7 @@ export function PlayerPage() {
   const [episodes, setEpisodes] = useState<EpisodeSummary[]>([]);
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
+  const [liveInfo, setLiveInfo] = useState<LiveModeInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -48,14 +52,14 @@ export function PlayerPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [archive, status, current] = await Promise.all([
+        const [archive, snapshot] = await Promise.all([
           requestData<EpisodeSummary[]>('/api/episodes?limit=12'),
-          requestData<StreamStatus>('/api/stream/status'),
-          requestData<NowPlaying | null>('/api/stream/now-playing'),
+          getStreamSnapshot(),
         ]);
         setEpisodes(archive);
-        setStreamStatus(status);
-        setNowPlaying(current);
+        setStreamStatus(snapshot.status);
+        setNowPlaying(snapshot.nowPlaying);
+        setLiveInfo(snapshot.live);
       } catch (requestError) {
         setError(requestError instanceof Error ? requestError.message : 'Failed to load the player');
       }
@@ -75,6 +79,14 @@ export function PlayerPage() {
     source.addEventListener('now-playing', (event) => {
       const next = JSON.parse((event as MessageEvent).data) as NowPlaying | null;
       setNowPlaying(next);
+    });
+    source.addEventListener('stream-mode', (event) => {
+      const next = JSON.parse((event as MessageEvent).data) as {
+        mode: StreamSnapshot['mode'];
+        live: LiveModeInfo;
+      };
+      setLiveInfo(next.live);
+      setStreamStatus((prev) => (prev ? { ...prev, mode: next.mode } : prev));
     });
 
     return () => {
@@ -156,23 +168,35 @@ export function PlayerPage() {
   }
 
   const fallbackEpisode = episodes[0] ?? null;
-  const isStreamLive = streamStatus?.online === true;
+  const streamMode = streamStatus?.mode ?? null;
+  const isStreamOnline = streamMode === 'live' || streamMode === 'archive';
+  const isLiveMode = streamMode === 'live';
   const currentEpisode = nowPlaying?.episode ?? null;
-  const shouldUseArchiveFallback = !isStreamLive;
-  const displayEpisode = currentEpisode ?? (shouldUseArchiveFallback ? fallbackEpisode : null);
+  const displayEpisode = isLiveMode
+    ? null
+    : currentEpisode ?? fallbackEpisode;
   const displayedEpisodeId = displayEpisode?.id ?? null;
-  const heroTitle = displayEpisode?.title ?? (isStreamLive ? 'On Air Now' : 'duckfeed');
-  const heroPresenter = displayEpisode?.presenter ?? null;
-  const heroArtworkUrl = displayEpisode?.artworkUrl ?? null;
-  const heroMixcloudUrl = displayEpisode?.mixcloudUrl ?? null;
-  const heroDate =
-    formatBroadcastDate(displayEpisode?.broadcastDate) ??
-    (isStreamLive ? 'Live stream' : 'Live archive stream');
+  const heroTitle = isLiveMode
+    ? liveInfo?.sourceName ?? 'On Air Now'
+    : displayEpisode?.title ?? 'duckfeed';
+  const heroPresenter = isLiveMode ? null : displayEpisode?.presenter ?? null;
+  const heroArtworkUrl = isLiveMode ? null : displayEpisode?.artworkUrl ?? null;
+  const heroMixcloudUrl = isLiveMode ? null : displayEpisode?.mixcloudUrl ?? null;
+  const heroDate = isLiveMode
+    ? 'Live broadcast'
+    : formatBroadcastDate(displayEpisode?.broadcastDate) ?? 'Live archive stream';
   const upcomingEpisodes = episodes.filter((episode) => episode.id !== displayedEpisodeId).slice(0, 6);
   const nextUpcomingEpisode = upcomingEpisodes[0] ?? null;
   const queuedEpisodes = upcomingEpisodes.slice(1);
   const nextUpcomingDate = formatBroadcastDate(nextUpcomingEpisode?.broadcastDate);
-  const liveBadgeLabel = streamStatus == null ? 'checking' : isStreamLive ? 'live' : 'offline';
+  const liveBadgeLabel =
+    streamStatus == null
+      ? 'checking'
+      : streamMode === 'live'
+      ? 'live'
+      : streamMode === 'archive'
+      ? 'archive'
+      : 'offline';
   const displayStreamUrl =
     typeof window === 'undefined'
       ? getStreamAudioUrl()
@@ -202,10 +226,10 @@ export function PlayerPage() {
                   <span
                     className={[
                       'h-2.5 w-2.5 rounded-full',
-                      isStreamLive ? 'live-badge-dot--online bg-[#00ff3a]' : 'bg-white/35',
+                      isStreamOnline ? 'live-badge-dot--online bg-[#00ff3a]' : 'bg-white/35',
                     ].join(' ')}
                   />
-                  <span className={isStreamLive ? 'live-badge-text--online text-[#00ff3a]' : 'text-white/60'}>
+                  <span className={isStreamOnline ? 'live-badge-text--online text-[#00ff3a]' : 'text-white/60'}>
                     {liveBadgeLabel}
                   </span>
                 </div>

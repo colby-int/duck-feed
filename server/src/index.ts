@@ -15,6 +15,7 @@ import { adminRoutes } from './routes/admin/index.js';
 import { publicEpisodeRoutes } from './routes/episodes.js';
 import { siteSettingsRoutes } from './routes/site-settings.js';
 import { streamRoutes } from './routes/stream.js';
+import { startLiveSupervisor } from './services/live-supervisor.js';
 import { startPlaybackLogWriter } from './services/playback-log-writer.js';
 import { startStreamPoller } from './services/stream-poller.js';
 
@@ -75,6 +76,7 @@ async function start() {
     // Start the playback-log writer after the HTTP server is listening so we
     // never block startup on a Liquidsoap connectivity hiccup.
     startPlaybackLogWriter();
+    startLiveSupervisor();
   } catch (err) {
     logger.error({ err }, 'Failed to start server');
     process.exit(1);

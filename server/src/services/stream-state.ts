@@ -1,16 +1,40 @@
 import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { episodes, playbackLog, tracks } from '../db/schema.js';
+import type { LiveScheduleEntry } from '../db/schema.js';
 import { getRequestMetadata } from './liquidsoap.js';
 import { resolveLiveCurrentAudio } from './live-current-audio.js';
+import { getLiveSnapshot } from './live-supervisor.js';
 import { getStreamSnapshot } from './stream-poller.js';
+
+export type StreamMode = 'live' | 'archive' | 'offline';
 
 export interface StreamStatus {
   online: boolean;
+  mode: StreamMode;
   queueLength: number;
   librarySize: number;
   streamUrl: string;
   checkedAt: string;
+}
+
+export interface LiveModeInfo {
+  isLive: boolean;
+  sourceName: string | null;
+  currentEntry: LiveScheduleEntry | null;
+  nextEntry: LiveScheduleEntry | null;
+  nextChangeAt: string | null;
+  nowAdelaide: string;
+}
+
+export interface UnifiedStreamSnapshot {
+  mode: StreamMode;
+  streamUrl: string;
+  status: StreamStatus;
+  nowPlaying: NowPlaying | null;
+  live: LiveModeInfo;
+  schedule: LiveScheduleEntry[];
+  generatedAt: string;
 }
 
 export interface NowPlaying {
@@ -224,16 +248,24 @@ async function getLiquidsoapNowPlaying(
 }
 
 export async function getStreamStatus(): Promise<StreamStatus> {
-  const [snapshot, readyEpisodes] = await Promise.all([
+  const [snapshot, readyEpisodes, liveSnapshot] = await Promise.all([
     getStreamSnapshot(),
     db
       .select({ id: episodes.id })
       .from(episodes)
       .where(and(eq(episodes.status, 'ready'), isNotNull(episodes.filePath))),
+    getLiveSnapshot(),
   ]);
+
+  const mode: StreamMode = !snapshot.online
+    ? 'offline'
+    : liveSnapshot.appliedLiveOnLiquidsoap
+    ? 'live'
+    : 'archive';
 
   return {
     online: snapshot.online,
+    mode,
     queueLength: snapshot.online ? snapshot.queue.length : 0,
     librarySize: readyEpisodes.length,
     streamUrl: '/stream',
@@ -272,6 +304,33 @@ export async function getIntegrationStreamMetadata(): Promise<IntegrationStreamM
     nowPlaying,
     queue,
     generatedAt: new Date().toISOString(),
+  };
+}
+
+export async function getUnifiedStreamSnapshot(
+  now = new Date(),
+): Promise<UnifiedStreamSnapshot> {
+  const [status, liveSnapshot] = await Promise.all([getStreamStatus(), getLiveSnapshot()]);
+
+  // Only fetch now-playing when we're serving the archive — external live
+  // sources don't expose episode metadata through our pipeline.
+  const nowPlaying = status.mode === 'archive' ? await getCurrentNowPlaying(now) : null;
+
+  return {
+    mode: status.mode,
+    streamUrl: status.streamUrl,
+    status,
+    nowPlaying,
+    live: {
+      isLive: liveSnapshot.resolution.isLive,
+      sourceName: liveSnapshot.source?.displayName ?? null,
+      currentEntry: liveSnapshot.resolution.currentEntry,
+      nextEntry: liveSnapshot.resolution.nextEntry,
+      nextChangeAt: liveSnapshot.resolution.nextChangeAt?.toISOString() ?? null,
+      nowAdelaide: liveSnapshot.resolution.nowAdelaide.iso,
+    },
+    schedule: liveSnapshot.schedule,
+    generatedAt: now.toISOString(),
   };
 }
 

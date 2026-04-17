@@ -8,6 +8,7 @@ const links = [
   { to: '/admin/episodes', label: 'Episodes' },
   { to: '/admin/ingest', label: 'Ingest' },
   { to: '/admin/stream', label: 'Stream' },
+  { to: '/admin/schedule', label: 'Schedule' },
 ];
 
 export function AdminShell() {

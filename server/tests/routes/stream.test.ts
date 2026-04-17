@@ -5,6 +5,8 @@ const streamStateMock = vi.hoisted(() => ({
   getStreamStatus: vi.fn(),
   getCurrentNowPlaying: vi.fn(),
   getIntegrationStreamMetadata: vi.fn(),
+  getStreamQueue: vi.fn(),
+  getUnifiedStreamSnapshot: vi.fn(),
 }));
 
 vi.mock('../../src/services/stream-state.js', () => streamStateMock);
@@ -18,11 +20,14 @@ describe('public stream routes', () => {
     streamStateMock.getStreamStatus.mockReset();
     streamStateMock.getCurrentNowPlaying.mockReset();
     streamStateMock.getIntegrationStreamMetadata.mockReset();
+    streamStateMock.getStreamQueue.mockReset();
+    streamStateMock.getUnifiedStreamSnapshot.mockReset();
   });
 
   it('returns stream status in the standard API envelope', async () => {
     streamStateMock.getStreamStatus.mockResolvedValue({
       online: true,
+      mode: 'archive',
       queueLength: 0,
       librarySize: 1,
       streamUrl: '/stream',

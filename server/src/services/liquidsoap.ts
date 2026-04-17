@@ -257,6 +257,18 @@ export async function skipCurrentTrack(): Promise<{ raw: string[] }> {
   return { raw };
 }
 
+function quoteTelnetString(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+export async function setInteractiveString(name: string, value: string): Promise<string[]> {
+  return await sendCommand(`var.set ${name} = ${quoteTelnetString(value)}`);
+}
+
+export async function setInteractiveBool(name: string, value: boolean): Promise<string[]> {
+  return await sendCommand(`var.set ${name} = ${value ? 'true' : 'false'}`);
+}
+
 export async function pingLiquidsoap(): Promise<boolean> {
   try {
     await pollLiquidsoapState();

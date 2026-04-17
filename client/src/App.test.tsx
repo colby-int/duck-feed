@@ -10,12 +10,14 @@ vi.mock('./api/client', async () => {
     ...actual,
     getCurrentUser: vi.fn(),
     getSiteAppearance: vi.fn(),
+    getStreamSnapshot: vi.fn(),
     requestData: vi.fn(),
   };
 });
 
 const getCurrentUserMock = vi.mocked(api.getCurrentUser);
 const getSiteAppearanceMock = vi.mocked(api.getSiteAppearance);
+const getStreamSnapshotMock = vi.mocked(api.getStreamSnapshot);
 const requestDataMock = vi.mocked(api.requestData);
 
 describe('App', () => {
@@ -32,6 +34,7 @@ describe('App', () => {
     `;
     getCurrentUserMock.mockReset();
     getSiteAppearanceMock.mockReset();
+    getStreamSnapshotMock.mockReset();
     requestDataMock.mockReset();
     getCurrentUserMock.mockRejectedValue(new Error('not logged in'));
     getSiteAppearanceMock.mockResolvedValue({
@@ -41,23 +44,32 @@ describe('App', () => {
       logoUrl: '/api/site-assets/custom-logo.png',
       textColor: '#ddeeff',
     });
+    getStreamSnapshotMock.mockResolvedValue({
+      mode: 'offline',
+      streamUrl: '/stream',
+      status: {
+        checkedAt: '2026-04-11T00:00:00.000Z',
+        mode: 'offline',
+        librarySize: 0,
+        online: false,
+        queueLength: 0,
+        streamUrl: '/stream',
+      },
+      nowPlaying: null,
+      live: {
+        isLive: false,
+        sourceName: null,
+        currentEntry: null,
+        nextEntry: null,
+        nextChangeAt: null,
+        nowAdelaide: '2026-04-11T09:30:00.000+09:30',
+      },
+      schedule: [],
+      generatedAt: '2026-04-11T00:00:00.000Z',
+    });
     requestDataMock.mockImplementation(async (path) => {
       if (path === '/api/episodes?limit=12') {
         return [];
-      }
-
-      if (path === '/api/stream/status') {
-        return {
-          checkedAt: '2026-04-11T00:00:00.000Z',
-          librarySize: 0,
-          online: false,
-          queueLength: 0,
-          streamUrl: '/stream',
-        } satisfies api.StreamStatus;
-      }
-
-      if (path === '/api/stream/now-playing') {
-        return null;
       }
       throw new Error(`Unexpected request: ${path}`);
     });

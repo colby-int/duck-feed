@@ -5,6 +5,7 @@ import {
   getIntegrationStreamMetadata,
   getStreamQueue,
   getStreamStatus,
+  getUnifiedStreamSnapshot,
 } from '../services/stream-state.js';
 
 function writeSseEvent(reply: FastifyReply, event: string, data: unknown): void {
@@ -22,6 +23,16 @@ export function getPublicStreamSseHeaders(): Record<string, string> {
 }
 
 export async function streamRoutes(app: FastifyInstance): Promise<void> {
+  // Unified snapshot: mode + streamUrl + status + nowPlaying + live + schedule.
+  // This is the single endpoint third parties embed against.
+  app.get('/', async () => {
+    return {
+      data: await getUnifiedStreamSnapshot(),
+      error: null,
+      meta: null,
+    };
+  });
+
   app.get('/status', async () => {
     return {
       data: await getStreamStatus(),
@@ -42,9 +53,18 @@ export async function streamRoutes(app: FastifyInstance): Promise<void> {
     reply.hijack();
     reply.raw.writeHead(200, getPublicStreamSseHeaders());
 
+    let lastMode: string | null = null;
     const publish = async (): Promise<void> => {
-      writeSseEvent(reply, 'stream-status', await getStreamStatus());
-      writeSseEvent(reply, 'now-playing', await getCurrentNowPlaying());
+      const snapshot = await getUnifiedStreamSnapshot();
+      writeSseEvent(reply, 'stream-status', snapshot.status);
+      writeSseEvent(reply, 'now-playing', snapshot.nowPlaying);
+      if (snapshot.mode !== lastMode) {
+        writeSseEvent(reply, 'stream-mode', {
+          mode: snapshot.mode,
+          live: snapshot.live,
+        });
+        lastMode = snapshot.mode;
+      }
     };
 
     await publish();

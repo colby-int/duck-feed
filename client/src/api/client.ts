@@ -69,12 +69,52 @@ export interface IngestJobRecord {
   episodeSlug?: string | null;
 }
 
+export type StreamMode = 'live' | 'archive' | 'offline';
+
 export interface StreamStatus {
   online: boolean;
+  mode: StreamMode;
   queueLength: number;
   librarySize: number;
   streamUrl: string;
   checkedAt: string;
+}
+
+export interface LiveScheduleEntry {
+  id: string;
+  dayOfWeek: number;
+  startMinute: number;
+  endMinute: number;
+  enabled: boolean;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LiveSourceRecord {
+  id: number;
+  url: string | null;
+  displayName: string | null;
+  updatedAt: string;
+}
+
+export interface LiveModeInfo {
+  isLive: boolean;
+  sourceName: string | null;
+  currentEntry: LiveScheduleEntry | null;
+  nextEntry: LiveScheduleEntry | null;
+  nextChangeAt: string | null;
+  nowAdelaide: string;
+}
+
+export interface StreamSnapshot {
+  mode: StreamMode;
+  streamUrl: string;
+  status: StreamStatus;
+  nowPlaying: NowPlaying | null;
+  live: LiveModeInfo;
+  schedule: LiveScheduleEntry[];
+  generatedAt: string;
 }
 
 export interface StreamQueueEntry {
@@ -264,6 +304,64 @@ export async function getCurrentUser(): Promise<AdminUser> {
 
 export async function getSiteAppearance(): Promise<SiteAppearance> {
   return normalizeSiteAppearance(await requestData<SiteAppearance>('/api/site-settings'));
+}
+
+export async function getStreamSnapshot(): Promise<StreamSnapshot> {
+  return await requestData<StreamSnapshot>('/api/stream');
+}
+
+export async function getLiveSource(): Promise<LiveSourceRecord | null> {
+  return await requestData<LiveSourceRecord | null>('/api/admin/live-source');
+}
+
+export async function updateLiveSource(input: {
+  url?: string | null;
+  displayName?: string | null;
+}): Promise<LiveSourceRecord> {
+  return await requestData<LiveSourceRecord>('/api/admin/live-source', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function listLiveSchedule(): Promise<LiveScheduleEntry[]> {
+  return await requestData<LiveScheduleEntry[]>('/api/admin/live-schedule');
+}
+
+export async function createLiveScheduleEntry(input: {
+  dayOfWeek: number;
+  startMinute: number;
+  endMinute: number;
+  enabled?: boolean;
+  note?: string | null;
+}): Promise<LiveScheduleEntry> {
+  return await requestData<LiveScheduleEntry>('/api/admin/live-schedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateLiveScheduleEntry(
+  id: string,
+  input: Partial<{
+    dayOfWeek: number;
+    startMinute: number;
+    endMinute: number;
+    enabled: boolean;
+    note: string | null;
+  }>,
+): Promise<LiveScheduleEntry> {
+  return await requestData<LiveScheduleEntry>(`/api/admin/live-schedule/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteLiveScheduleEntry(id: string): Promise<void> {
+  await requestData(`/api/admin/live-schedule/${id}`, { method: 'DELETE' });
 }
 
 export async function updateSiteAppearance(input: {

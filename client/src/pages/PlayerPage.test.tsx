@@ -12,6 +12,7 @@ vi.mock('../api/client', async () => {
   const actual = await vi.importActual<typeof import('../api/client')>('../api/client');
   return {
     ...actual,
+    getStreamSnapshot: vi.fn(),
     requestData: vi.fn(),
   };
 });
@@ -30,6 +31,7 @@ vi.mock('../hooks/use-audio-motion', () => ({
   }),
 }));
 
+const getStreamSnapshotMock = vi.mocked(api.getStreamSnapshot);
 const requestDataMock = vi.mocked(api.requestData);
 
 const archiveFixture: api.EpisodeSummary[] = [
@@ -58,6 +60,52 @@ const archiveFixture: api.EpisodeSummary[] = [
     title: 'Night Drive',
   },
 ];
+
+const testPatternNowPlaying: api.NowPlaying = {
+  elapsedSeconds: 120,
+  episode: {
+    artworkUrl: 'https://cdn.example.com/test-pattern.jpg',
+    broadcastDate: '2025-09-08',
+    id: 'episode-1',
+    mixcloudUrl: 'https://www.mixcloud.com/example-station/test-pattern/',
+    presenter: 'Wellness Centre',
+    slug: 'test-pattern',
+    title: 'Test Pattern',
+  },
+  startedAt: '2026-04-08T00:00:00.000Z',
+  track: null,
+};
+
+function snapshotWith(
+  mode: api.StreamMode,
+  nowPlaying: api.NowPlaying | null,
+  overrides: Partial<api.StreamSnapshot> = {},
+): api.StreamSnapshot {
+  return {
+    mode,
+    streamUrl: '/stream',
+    status: {
+      checkedAt: '2026-04-08T00:00:00.000Z',
+      mode,
+      librarySize: 2,
+      online: mode !== 'offline',
+      queueLength: mode === 'offline' ? 0 : 1,
+      streamUrl: '/stream',
+    },
+    nowPlaying,
+    live: {
+      isLive: mode === 'live',
+      sourceName: null,
+      currentEntry: null,
+      nextEntry: null,
+      nextChangeAt: null,
+      nowAdelaide: '2026-04-08T09:30:00.000+09:30',
+    },
+    schedule: [],
+    generatedAt: '2026-04-08T00:00:00.000Z',
+    ...overrides,
+  };
+}
 
 function installEventSourceMock() {
   class EventSourceMock {
@@ -94,41 +142,15 @@ describe('PlayerPage', () => {
 
   beforeEach(() => {
     installEventSourceMock();
+    getStreamSnapshotMock.mockReset();
     requestDataMock.mockReset();
     requestDataMock.mockImplementation(async (path) => {
       if (path === '/api/episodes?limit=12') {
         return structuredClone(archiveFixture);
       }
-
-      if (path === '/api/stream/status') {
-        return {
-          checkedAt: '2026-04-08T00:00:00.000Z',
-          librarySize: 2,
-          online: true,
-          queueLength: 2,
-          streamUrl: '/stream',
-        };
-      }
-
-      if (path === '/api/stream/now-playing') {
-        return {
-          elapsedSeconds: 120,
-          episode: {
-            artworkUrl: 'https://cdn.example.com/test-pattern.jpg',
-            broadcastDate: '2025-09-08',
-            id: 'episode-1',
-            mixcloudUrl: 'https://www.mixcloud.com/example-station/test-pattern/',
-            presenter: 'Wellness Centre',
-            slug: 'test-pattern',
-            title: 'Test Pattern',
-          },
-          startedAt: '2026-04-08T00:00:00.000Z',
-          track: null,
-        } satisfies api.NowPlaying;
-      }
-
       throw new Error(`Unexpected request: ${path}`);
     });
+    getStreamSnapshotMock.mockResolvedValue(snapshotWith('archive', testPatternNowPlaying));
   });
 
   it('renders artwork, a Mixcloud CTA, formatted dates, and a collapsed next-up accordion showing next episode metadata', async () => {
@@ -144,7 +166,6 @@ describe('PlayerPage', () => {
     expect(screen.getByTestId('hero-date')).toHaveTextContent('September 8, 2025');
     expect(screen.getByTestId('hero-presenter-line')).toHaveTextContent('with Wellness Centre');
 
-    // Accordion is collapsed by default; summary surfaces the next episode's title + date.
     const accordion = screen.getByTestId('up-next-accordion');
     expect(accordion).not.toHaveAttribute('open');
     const summary = accordion.querySelector('summary');
@@ -160,7 +181,6 @@ describe('PlayerPage', () => {
     expect(within(queueBody as HTMLElement).queryByText('Night Drive')).not.toBeInTheDocument();
     expect(within(queueBody as HTMLElement).getByText(/No additional episodes are queued in rotation right now./i)).toBeInTheDocument();
 
-    expect(screen.queryByText(/archive/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/now playing/i)).not.toBeInTheDocument();
   });
 
@@ -176,34 +196,6 @@ describe('PlayerPage', () => {
           },
         ];
       }
-
-      if (path === '/api/stream/status') {
-        return {
-          checkedAt: '2026-04-08T00:00:00.000Z',
-          librarySize: 2,
-          online: true,
-          queueLength: 2,
-          streamUrl: '/stream',
-        };
-      }
-
-      if (path === '/api/stream/now-playing') {
-        return {
-          elapsedSeconds: 120,
-          episode: {
-            artworkUrl: 'https://cdn.example.com/test-pattern.jpg',
-            broadcastDate: '2025-09-08',
-            id: 'episode-1',
-            mixcloudUrl: 'https://www.mixcloud.com/example-station/test-pattern/',
-            presenter: 'Wellness Centre',
-            slug: 'test-pattern',
-            title: 'Test Pattern',
-          },
-          startedAt: '2026-04-08T00:00:00.000Z',
-          track: null,
-        } satisfies api.NowPlaying;
-      }
-
       throw new Error(`Unexpected request: ${path}`);
     });
 
@@ -217,27 +209,7 @@ describe('PlayerPage', () => {
   });
 
   it('falls back to the latest archive episode metadata when the stream is offline and no now-playing episode is available', async () => {
-    requestDataMock.mockImplementation(async (path) => {
-      if (path === '/api/episodes?limit=12') {
-        return structuredClone(archiveFixture);
-      }
-
-      if (path === '/api/stream/status') {
-        return {
-          checkedAt: '2026-04-08T00:00:00.000Z',
-          librarySize: 2,
-          online: false,
-          queueLength: 0,
-          streamUrl: '/stream',
-        };
-      }
-
-      if (path === '/api/stream/now-playing') {
-        return null;
-      }
-
-      throw new Error(`Unexpected request: ${path}`);
-    });
+    getStreamSnapshotMock.mockResolvedValue(snapshotWith('offline', null));
 
     renderPlayerPage();
 
@@ -260,28 +232,19 @@ describe('PlayerPage', () => {
     expect(summary).not.toHaveTextContent('Test Pattern');
   });
 
-  it('does not borrow archive metadata while the stream is live and now-playing is unavailable', async () => {
-    requestDataMock.mockImplementation(async (path) => {
-      if (path === '/api/episodes?limit=12') {
-        return structuredClone(archiveFixture);
-      }
-
-      if (path === '/api/stream/status') {
-        return {
-          checkedAt: '2026-04-08T00:00:00.000Z',
-          librarySize: 2,
-          online: true,
-          queueLength: 1,
-          streamUrl: '/stream',
-        };
-      }
-
-      if (path === '/api/stream/now-playing') {
-        return null;
-      }
-
-      throw new Error(`Unexpected request: ${path}`);
-    });
+  it('does not borrow archive metadata while the stream is in live mode', async () => {
+    getStreamSnapshotMock.mockResolvedValue(
+      snapshotWith('live', null, {
+        live: {
+          isLive: true,
+          sourceName: null,
+          currentEntry: null,
+          nextEntry: null,
+          nextChangeAt: null,
+          nowAdelaide: '2026-04-08T09:30:00.000+09:30',
+        },
+      }),
+    );
 
     renderPlayerPage();
 
@@ -291,6 +254,7 @@ describe('PlayerPage', () => {
     expect(screen.queryByRole('img', { name: /artwork for test pattern/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /listen on mixcloud/i })).not.toBeInTheDocument();
 
+    // Archive list still enumerates episodes; no episode is hoisted to the hero slot.
     const accordion = screen.getByTestId('up-next-accordion');
     const summary = accordion.querySelector('summary');
     expect(summary).not.toBeNull();
@@ -298,40 +262,22 @@ describe('PlayerPage', () => {
   });
 
   it('does not borrow artwork from a different archive episode when now-playing artwork is missing', async () => {
-    requestDataMock.mockImplementation(async (path) => {
-      if (path === '/api/episodes?limit=12') {
-        return structuredClone(archiveFixture);
-      }
-
-      if (path === '/api/stream/status') {
-        return {
-          checkedAt: '2026-04-08T00:00:00.000Z',
-          librarySize: 2,
-          online: true,
-          queueLength: 1,
-          streamUrl: '/stream',
-        };
-      }
-
-      if (path === '/api/stream/now-playing') {
-        return {
-          elapsedSeconds: 120,
-          episode: {
-            artworkUrl: null,
-            broadcastDate: '2025-11-01',
-            id: 'episode-live',
-            mixcloudUrl: 'https://www.mixcloud.com/example-station/live-set/',
-            presenter: 'DJ Current',
-            slug: 'live-set',
-            title: 'Current Set',
-          },
-          startedAt: '2026-04-08T00:00:00.000Z',
-          track: null,
-        } satisfies api.NowPlaying;
-      }
-
-      throw new Error(`Unexpected request: ${path}`);
-    });
+    getStreamSnapshotMock.mockResolvedValue(
+      snapshotWith('archive', {
+        elapsedSeconds: 120,
+        episode: {
+          artworkUrl: null,
+          broadcastDate: '2025-11-01',
+          id: 'episode-live',
+          mixcloudUrl: 'https://www.mixcloud.com/example-station/live-set/',
+          presenter: 'DJ Current',
+          slug: 'live-set',
+          title: 'Current Set',
+        },
+        startedAt: '2026-04-08T00:00:00.000Z',
+        track: null,
+      }),
+    );
 
     renderPlayerPage();
 
@@ -343,40 +289,22 @@ describe('PlayerPage', () => {
   });
 
   it('does not show a stale Mixcloud CTA when the current episode has no Mixcloud URL', async () => {
-    requestDataMock.mockImplementation(async (path) => {
-      if (path === '/api/episodes?limit=12') {
-        return structuredClone(archiveFixture);
-      }
-
-      if (path === '/api/stream/status') {
-        return {
-          checkedAt: '2026-04-08T00:00:00.000Z',
-          librarySize: 2,
-          online: true,
-          queueLength: 1,
-          streamUrl: '/stream',
-        };
-      }
-
-      if (path === '/api/stream/now-playing') {
-        return {
-          elapsedSeconds: 120,
-          episode: {
-            artworkUrl: null,
-            broadcastDate: '2025-11-01',
-            id: 'episode-live',
-            mixcloudUrl: null,
-            presenter: 'DJ Current',
-            slug: 'live-set',
-            title: 'Current Set',
-          },
-          startedAt: '2026-04-08T00:00:00.000Z',
-          track: null,
-        } satisfies api.NowPlaying;
-      }
-
-      throw new Error(`Unexpected request: ${path}`);
-    });
+    getStreamSnapshotMock.mockResolvedValue(
+      snapshotWith('archive', {
+        elapsedSeconds: 120,
+        episode: {
+          artworkUrl: null,
+          broadcastDate: '2025-11-01',
+          id: 'episode-live',
+          mixcloudUrl: null,
+          presenter: 'DJ Current',
+          slug: 'live-set',
+          title: 'Current Set',
+        },
+        startedAt: '2026-04-08T00:00:00.000Z',
+        track: null,
+      }),
+    );
 
     renderPlayerPage();
 

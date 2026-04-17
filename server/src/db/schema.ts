@@ -125,6 +125,32 @@ export const streamApiKeys = pgTable('stream_api_keys', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// === Live Source ===
+// Singleton row (id=1) holding the active external live-stream URL + display
+// name. Liquidsoap reads the URL via telnet-set interactive variables; the
+// table itself is the source of truth.
+export const liveSource = pgTable('live_source', {
+  id: integer('id').primaryKey().default(1),
+  url: text('url'),
+  displayName: text('display_name'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// === Live Schedule Entry ===
+// Recurring weekly windows during which the live source overrides the
+// archive rotation. All minute fields are minutes-of-day in Adelaide local
+// time (0–1439). dayOfWeek uses Luxon ISO convention (1=Mon … 7=Sun).
+export const liveScheduleEntry = pgTable('live_schedule_entry', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  dayOfWeek: integer('day_of_week').notNull(),
+  startMinute: integer('start_minute').notNull(),
+  endMinute: integer('end_minute').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // === Site Settings ===
 export const siteSettings = pgTable('site_settings', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
@@ -203,3 +229,7 @@ export type StreamApiKey = typeof streamApiKeys.$inferSelect;
 export type NewStreamApiKey = typeof streamApiKeys.$inferInsert;
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type NewSiteSettings = typeof siteSettings.$inferInsert;
+export type LiveSource = typeof liveSource.$inferSelect;
+export type NewLiveSource = typeof liveSource.$inferInsert;
+export type LiveScheduleEntry = typeof liveScheduleEntry.$inferSelect;
+export type NewLiveScheduleEntry = typeof liveScheduleEntry.$inferInsert;
