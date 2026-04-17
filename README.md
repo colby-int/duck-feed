@@ -25,7 +25,7 @@
 - **Frontend player**: public stream page with live now-playing data, play/pause controls, waveform visualiser, next-up queue, stream URL copy, Mixcloud links, and runtime branding support.
 
 
-- **Admin management**: session-authenticated admin UI for dashboard monitoring, appearance/branding changes, episode editing, ingest uploads and job history, track review, stream queue controls, and integration key management.
+- **Admin management**: session-authenticated admin UI for dashboard monitoring, appearance/branding changes, episode editing, ingest uploads and job history, track review, stream queue controls, schedule for live source windows, and integration key management.
 
 
 - **Ingest + processing**: upload via admin or drop files into the watched dropzone, then copy, normalise, fingerprint, enrich, and prepare audio for the `/library` without mutating source files.
@@ -69,8 +69,8 @@
 4. In another terminal, run the database migration and seed an admin user:
 
    ```bash
-   docker compose exec server npm run db:migrate
-   docker compose exec server npx tsx scripts/seed.ts
+   make db-migrate
+   make seed-admin
    ```
 
 5. Open the public player at `http://localhost`, the admin UI at `http://localhost/admin`, and the direct stream at `http://localhost/stream`.
@@ -157,6 +157,7 @@ make test          # run server and client test suites
 make lint          # run lint checks
 make typecheck     # run TypeScript checks
 make db-migrate    # run pending DB migrations from the host
+make seed-admin    # create/reset admin user
 make stream-api-key-list    # list integration API keys from the running server container
 make stream-api-key-create  # create an integration API key
 make stream-api-key-revoke  # revoke an integration API key
