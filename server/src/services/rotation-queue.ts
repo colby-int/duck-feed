@@ -24,6 +24,49 @@ export interface RotationQueueViewEntry {
   };
 }
 
+export function interleaveEpisodesByBroadcastDate<T extends { broadcastDate: string | null }>(
+  episodes: T[],
+): T[] {
+  const buckets = new Map<string, T[]>();
+
+  for (const episode of episodes) {
+    const key = episode.broadcastDate ?? '__unknown__';
+    const bucket = buckets.get(key);
+    if (bucket) {
+      bucket.push(episode);
+      continue;
+    }
+
+    buckets.set(key, [episode]);
+  }
+
+  const interleaved: T[] = [];
+  let previousKey: string | null = null;
+
+  while (true) {
+    const remainingBuckets = [...buckets.entries()]
+      .filter(([, bucket]) => bucket.length > 0)
+      .sort((left, right) => right[1].length - left[1].length);
+
+    if (remainingBuckets.length === 0) {
+      return interleaved;
+    }
+
+    let [selectedKey, selectedBucket] = remainingBuckets[0];
+    if (selectedKey === previousKey && remainingBuckets.length > 1) {
+      [selectedKey, selectedBucket] = remainingBuckets[1];
+    }
+
+    const nextEpisode = selectedBucket.shift();
+    if (!nextEpisode) {
+      continue;
+    }
+
+    interleaved.push(nextEpisode);
+    previousKey = selectedKey;
+  }
+}
+
 export async function listRotationQueue(): Promise<RotationQueueViewEntry[]> {
   const rows = await db
     .select({
@@ -73,7 +116,9 @@ export async function shuffleRotationQueue(count: number): Promise<RotationQueue
     .from(episodes)
     .where(and(eq(episodes.status, 'ready'), eq(episodes.rotationCycle, minCycle)));
 
-  const shuffled = fisherYatesShuffle([...candidateEpisodes]).slice(
+  const shuffled = interleaveEpisodesByBroadcastDate(
+    fisherYatesShuffle([...candidateEpisodes]),
+  ).slice(
     0,
     Math.max(0, count),
   );
