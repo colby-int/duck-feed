@@ -47,6 +47,7 @@ describe('public stream routes', () => {
     expect(response.json()).toEqual({
       data: {
         online: true,
+        mode: 'archive',
         queueLength: 0,
         librarySize: 1,
         streamUrl: '/stream',
