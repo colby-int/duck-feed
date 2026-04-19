@@ -14,6 +14,7 @@ import { EpisodeDisplayTitleText } from '../components/episode-display-title-tex
 import { PublicPlayerControl } from '../components/public-player-control';
 import { useSiteAppearance } from '../hooks/use-site-appearance';
 import { useAudioMotion } from '../hooks/use-audio-motion';
+import { useMediaSession } from '../hooks/use-media-session';
 
 const DISPLAY_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
@@ -150,16 +151,28 @@ export function PlayerPage() {
     }
   }
 
+  function handlePlay(): void {
+    const el = audioElement;
+    if (!el) return;
+    activateAudioMotion();
+    // Always reconnect with a fresh URL on every play. Cheap insurance against
+    // stale connections from prior sessions or background tabs.
+    reconnectAudio(true);
+  }
+
+  function handlePause(): void {
+    const el = audioElement;
+    if (!el) return;
+    el.pause();
+  }
+
   function handlePlayPause(): void {
     const el = audioElement;
     if (!el) return;
     if (el.paused) {
-      activateAudioMotion();
-      // Always reconnect with a fresh URL on every play. Cheap insurance against
-      // stale connections from prior sessions or background tabs.
-      reconnectAudio(true);
+      handlePlay();
     } else {
-      el.pause();
+      handlePause();
     }
   }
 
@@ -197,6 +210,20 @@ export function PlayerPage() {
       : streamMode === 'archive'
       ? 'archive'
       : 'offline';
+  useMediaSession({
+    episode: heroTitle
+      ? {
+          artworkUrl: heroArtworkUrl,
+          broadcastDate: displayEpisode?.broadcastDate ?? null,
+          presenter: heroPresenter,
+          title: heroTitle,
+        }
+      : null,
+    isPlaying,
+    onPause: handlePause,
+    onPlay: handlePlay,
+  });
+
   const displayStreamUrl =
     typeof window === 'undefined'
       ? getStreamAudioUrl()

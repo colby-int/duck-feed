@@ -20,6 +20,12 @@ vi.mock('../../src/db/index.js', () => ({
 
 vi.mock('../../src/services/mixcloud.js', () => mixcloudMock);
 
+const audioRetagMock = vi.hoisted(() => ({
+  reconcileLibraryTags: vi.fn().mockResolvedValue({ checked: 0, failed: 0, retagged: 0 }),
+}));
+
+vi.mock('../../src/services/audio-retag.js', () => audioRetagMock);
+
 describe('metadata recovery service', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -31,6 +37,12 @@ describe('metadata recovery service', () => {
     mixcloudMock.discoverMixcloudEpisodes.mockReset();
     mixcloudMock.fetchMixcloudEpisode.mockReset();
     mixcloudMock.condenseMetadataSegment.mockClear();
+    audioRetagMock.reconcileLibraryTags.mockClear();
+    audioRetagMock.reconcileLibraryTags.mockResolvedValue({
+      checked: 0,
+      failed: 0,
+      retagged: 0,
+    });
   });
 
   it('repairs malformed ready rows by matching structured filename metadata against Mixcloud discovery', async () => {
@@ -74,6 +86,8 @@ describe('metadata recovery service', () => {
       scanned: 1,
       skipped: 0,
       updated: 1,
+      retaggedFiles: 0,
+      retagFailures: 0,
     });
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({

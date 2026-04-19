@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { episodes } from '../db/schema.js';
 import { parseEpisodeFilename } from '../lib/episode-filename.js';
 import { logger } from '../lib/logger.js';
+import { reconcileLibraryTags } from './audio-retag.js';
 import {
   condenseMetadataSegment,
   discoverMixcloudEpisodes,
@@ -27,6 +28,8 @@ export interface MetadataRecoverySummary {
   scanned: number;
   skipped: number;
   updated: number;
+  retaggedFiles: number;
+  retagFailures: number;
 }
 
 export async function recoverEpisodeMetadata(): Promise<MetadataRecoverySummary> {
@@ -85,13 +88,20 @@ export async function recoverEpisodeMetadata(): Promise<MetadataRecoverySummary>
     updated += 1;
   }
 
+  const tagSummary = await reconcileLibraryTags();
+
   const summary = {
     matched,
     scanned: rows.length,
     skipped,
     updated,
+    retaggedFiles: tagSummary.retagged,
+    retagFailures: tagSummary.failed,
   };
-  logger.info(summary, 'metadata-recovery: pass complete');
+  logger.info(
+    { ...summary, tagsChecked: tagSummary.checked },
+    'metadata-recovery: pass complete',
+  );
   return summary;
 }
 

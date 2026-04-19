@@ -100,6 +100,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MIXCLOUD_USER_URL: ${MIXCLOUD_USER_URL:-https://www.mixcloud.com/duckradio/}
       METADATA_RECOVERY_INTERVAL_MS: ${METADATA_RECOVERY_INTERVAL_MS:-3600000}
+    volumes:
+      # Read-write: the recovery pass rewrites ID3 tags on library files
+      # whose DB title/presenter have been repaired since original ingest.
+      - ./volumes/library:/var/lib/duckfeed/library
 
   client:
     build:
