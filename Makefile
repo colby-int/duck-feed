@@ -3,7 +3,8 @@
        stream-api-key-list stream-api-key-create stream-api-key-revoke \
        stream-check stream-check-quick link-check \
        build deploy test test-watch lint lint-fix typecheck \
-       backup restore seed-admin ingest seed-test-audio
+       backup restore seed-admin ingest seed-test-audio \
+       cms-install cms-dev cms-db-create cms-db-drop
 
 PROD_LOCAL_COMPOSE_FILE := docker-compose.prod.local.yml
 PROD_LOCAL_COMPOSE := $(if $(wildcard $(PROD_LOCAL_COMPOSE_FILE)),-f $(PROD_LOCAL_COMPOSE_FILE),)
@@ -167,6 +168,23 @@ endif
 
 seed-admin: ## Create/reset admin user
 	cd server && npx tsx scripts/seed.ts
+
+# === CMS (Payload, experimental) ===
+
+cms-install: ## Install Payload CMS dependencies
+	cd cms && npm install
+
+cms-db-create: ## Create the duckfeed_cms database inside the postgres container
+	docker compose exec -T postgres createdb -U $${POSTGRES_USER:-duckfeed} duckfeed_cms || echo "duckfeed_cms may already exist"
+
+cms-db-drop: ## Drop the duckfeed_cms database (back-out)
+	docker compose exec -T postgres dropdb -U $${POSTGRES_USER:-duckfeed} duckfeed_cms
+
+cms-dev: ## Run Payload CMS locally on port 3001 (requires postgres running)
+	cd cms && npm run dev
+
+cms-seed-shows: ## Import distinct shows + presenters from duckfeed.episodes into the CMS
+	cd cms && npm run seed:shows
 
 # === Help ===
 

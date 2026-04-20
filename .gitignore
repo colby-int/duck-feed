@@ -66,3 +66,11 @@ episodes/
 /scripts/tests/ingest.test.mjs
 /scripts/tests/mixcloud.test.mjs
 /docs/features
+
+# Payload CMS (experimental, not part of prod stack)
+/cms/node_modules
+/cms/.next
+/cms/.env
+/cms/.env.local
+/cms/media
+/cms/payload-types.ts

@@ -1,0 +1,48 @@
+{
+  "name": "duckfeed-cms",
+  "version": "0.1.0",
+  "description": "Payload CMS (experimental) for Duck Feed editorial content",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev -p 3001",
+    "devsafe": "rm -rf .next && cross-env NODE_OPTIONS=--no-deprecation next dev -p 3001",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "lint": "cross-env NODE_OPTIONS=--no-deprecation eslint .",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start -p 3001",
+    "seed:shows": "cross-env NODE_OPTIONS=--no-deprecation node --env-file=.env --import=tsx/esm scripts/seed-from-duckfeed.ts"
+  },
+  "dependencies": {
+    "@payloadcms/db-postgres": "^3.83.0",
+    "@payloadcms/next": "^3.83.0",
+    "@payloadcms/richtext-lexical": "^3.83.0",
+    "@payloadcms/ui": "^3.83.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "16.4.7",
+    "graphql": "^16.8.1",
+    "next": "16.2.3",
+    "payload": "^3.83.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sharp": "0.34.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.9",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "autoprefixer": "^10.5.0",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "16.2.3",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.19.0",
+    "typescript": "5.7.3"
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0"
+  }
+}

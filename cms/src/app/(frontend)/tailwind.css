@@ -1,0 +1,53 @@
+@tailwind components;
+@tailwind utilities;
+
+.frontend-root {
+  --site-color-brand: 230 142 73;
+  --site-color-container: 44 57 140;
+  --site-color-text: 20 20 19;
+  --site-color-brand-text: 20 20 19;
+  color: rgb(var(--site-color-brand-text));
+  background: rgb(var(--site-color-brand));
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+.frontend-root * {
+  box-sizing: border-box;
+}
+
+.frontend-root img {
+  display: block;
+  max-width: 100%;
+}
+
+.frontend-root a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.prose-duckfeed h1,
+.prose-duckfeed h2,
+.prose-duckfeed h3 {
+  font-weight: 700;
+  margin: 1.25em 0 0.5em;
+  line-height: 1.15;
+}
+.prose-duckfeed h1 { font-size: 2rem; }
+.prose-duckfeed h2 { font-size: 1.5rem; }
+.prose-duckfeed h3 { font-size: 1.2rem; }
+.prose-duckfeed p { margin: 0.75em 0; line-height: 1.6; }
+.prose-duckfeed a { text-decoration: underline; }
+.prose-duckfeed ul,
+.prose-duckfeed ol { padding-left: 1.5em; margin: 0.75em 0; }
+.prose-duckfeed li { margin: 0.25em 0; }
+.prose-duckfeed blockquote {
+  border-left: 3px solid rgb(var(--site-color-text) / 0.3);
+  padding-left: 1em;
+  margin: 1em 0;
+  opacity: 0.85;
+}
